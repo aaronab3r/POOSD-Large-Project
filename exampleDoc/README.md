@@ -1,10 +1,10 @@
-#This is a collection of files that we used in the "Getting Started With MERN" documents.
+# This is a collection of files that we used in the "Getting Started With MERN" documents.
 These files are used in this repo so everyone on the team can work using the same files and get used to using Git.
 
-#Important Note:
+# Important Note:
   DO NOT UPLOAD .env FILES, THOSE STAY ON WHATEVER MACHINE THEY'RE FROM.
 
-#Here's the full list of what NOT to upload: 
+# Here's the full list of what NOT to upload: 
 (this is from the .gitignore file from doing the doc, which wasn't uploaded either)
   # Logs
 logs
