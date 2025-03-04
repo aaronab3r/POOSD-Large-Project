@@ -4,7 +4,7 @@ const cors = require('cors');
 
 const MongoClient = require('mongodb').MongoClient;
 // There might be an issue with the url
-const url = 'mongodb+srv://poosd2025:poosd2025@test.ek8ek.mongodb.net/?retryWrites=true&w=majority&appName=test';
+const url = 'RESTRICTED'; // this cannot be put into the github
 
 const client = new MongoClient(url);
 client.connect();
