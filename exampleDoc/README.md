@@ -29,5 +29,5 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+*.sw? (question mark means any character, even nothing)
   
