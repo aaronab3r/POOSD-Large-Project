@@ -6,8 +6,8 @@ function CardUI()
 	let _ud : any = localStorage.getItem('user_data');
 	let ud = JSON.parse( _ud );
 	let userId : string = ud.id;
-	let firstName : string = ud.firstName;
-	let lastName : string = ud.lastName;
+	// let firstName : string = ud.firstName;
+	// let lastName : string = ud.lastName;
 	const [message,setMessage] = useState('');
 	const [searchResults,setResults] = useState('');
 	const [cardList,setCardList] = useState('');
@@ -38,7 +38,7 @@ function CardUI()
 
 		try
 		{
-			const response = await fetch('http://cop4331-1.online:5000/api/addcard', {method:'POST',body:js,headers:{'Content-Type': 'application/json'}});
+			const response = await fetch(buildPath('api/addcard'), {method:'POST',body:js,headers:{'Content-Type': 'application/json'}});
 
 		        let txt = await response.text();
 		        let res = JSON.parse(txt);
@@ -67,7 +67,7 @@ function CardUI()
 
 		try
 		{
-		        const response = await fetch('http://cop4331-1.online:5000/api/searchcards', {method:'POST',body:js,headers:{'Content-Type': 'application/json'}});
+		        const response = await fetch(buildPath('api/searchcards'), {method:'POST',body:js,headers:{'Content-Type': 'application/json'}});
   
 		        let txt = await response.text();
 		        let res = JSON.parse(txt);
