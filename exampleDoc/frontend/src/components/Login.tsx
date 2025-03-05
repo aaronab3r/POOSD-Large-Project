@@ -7,6 +7,21 @@ function Login()
 	const [loginName,setLoginName] = React.useState('');
 	const[loginPassword,setPassword] = React.useState('');
 
+	// Stuff from MERN B
+	const app_name = 'cop4331-5.com';
+
+	function buildPath(route:string) : string
+	{
+		if (process.env.NODE_ENV != 'development')
+		{
+			return 'http://' + app_name + ':5000/' + route;
+		}
+		else
+		{
+			return 'http://localhost:5000/' + route;
+		}
+	}
+
 	async function doLogin(event:any) : Promise<void>
     	{
         	event.preventDefault();
@@ -16,7 +31,7 @@ function Login()
   
 	        try
         	{    
-	            const response = await fetch('http://localhost:5000/api/login', {method:'POST',body:js,headers:{'Content-Type': 'application/json'}});
+	            const response = await fetch(buildPath('api/login'), {method:'POST',body:js,headers:{'Content-Type': 'application/json'}});
   
 	            var res = JSON.parse(await response.text());
   
@@ -26,7 +41,8 @@ function Login()
 	            }
         	    else
 	            {
-        	        var user = {firstName:res.firstName,lastName:res.lastName,id:res.id} localStorage.setItem('user_data', JSON.stringify(user));
+        	        var user = {firstName:res.firstName,lastName:res.lastName,id:res.id};
+			localStorage.setItem('user_data', JSON.stringify(user));
   
 	                setMessage('');
         	        window.location.href = '/cards';
