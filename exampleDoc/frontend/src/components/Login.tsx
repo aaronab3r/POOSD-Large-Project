@@ -8,7 +8,7 @@ function Login()
 	const[loginPassword,setPassword] = React.useState('');
 
 	// Stuff from MERN B
-	const app_name = 'cop4331-5.com';
+	const app_name = 'cop4331-1.online';
 
 	function buildPath(route:string) : string
 	{
