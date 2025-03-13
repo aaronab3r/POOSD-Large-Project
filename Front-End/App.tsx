@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import backgroundImage from "./images/background.jpg";
 
 export default function App() {
   const [showRegister, setShowRegister] = useState(false);
@@ -67,7 +68,15 @@ export default function App() {
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.heading}>{showRegister ? "Register" : "Login"}</h1>
+      <h1 style={styles.heading}>
+        {showRegister ? (
+          <span>Create an Account</span> // Wrapped in <span> to match JSX type
+        ) : (
+          <span>
+            Welcome to <br /> FishNet
+          </span>
+        )}
+      </h1>
       <div style={styles.formBox}>
         {showRegister && (
           <>
@@ -122,7 +131,9 @@ export default function App() {
           style={styles.toggleButton}
           onClick={() => setShowRegister(!showRegister)}
         >
-          {showRegister ? "Already have an account? Login" : "Don't have an account? Register"}
+          {showRegister
+            ? "Already have an account? Login"
+            : "Don't have an account? Register"}
         </button>
       </div>
     </div>
@@ -136,9 +147,16 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     height: "100vh",
+    backgroundImage: `url(${backgroundImage})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
   },
   heading: {
     fontSize: "40px",
+    textAlign: "center" as "center",
+    display: "block",
+    width: "100%",
+    lineHeight: "1.2",
   },
   formBox: {
     marginTop: "20px",
@@ -182,4 +200,3 @@ const styles = {
     color: "red",
   },
 };
-
