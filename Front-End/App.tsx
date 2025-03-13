@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import backgroundImage from "./images/background.jpg";
 
 export default function App() {
@@ -9,6 +9,19 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+
+  const app_name = 'cop4331-1.online';
+  function buildPath(route:string) : string
+  {
+      if (process.env.NODE_ENV != 'development')
+      {
+          return 'http://' + app_name + ':5000/' + route;
+      }
+      else
+      {
+          return 'http://localhost:5000/' + route;
+      }
+  }
 
   const handleRegister = async () => {
     if (!firstName || !lastName || !login || !password || !confirmPassword) {
@@ -21,7 +34,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch("http://165.227.65.153:5000/api/register", {
+      const response = await fetch(buildPath('api/register'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ firstName, lastName, login, password }),
@@ -47,7 +60,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch("http://165.227.65.153:5000/api/login", {
+      const response = await fetch(buildPath('api/login'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ login, password }),
@@ -57,7 +70,10 @@ export default function App() {
 
       if (response.ok) {
         setMessage("Login successful!");
+
         // Redirect to dashboard or another page if needed
+        window.location.href = '/cards';
+        
       } else {
         setMessage(`Error: ${data.error}`);
       }
