@@ -101,3 +101,45 @@ app.post('/api/searchcards', async (req, res, next) =>
     var ret = {results:_ret, error:error};
     res.status(200).json(ret);
 });
+
+app.post('/api/register', async (req, res) => {
+    // incoming: firstName, lastName, login, password
+    // outgoing: id, error
+  
+    const { firstName, lastName, login, password } = req.body;
+  
+    // Validate input
+    if (!firstName || !lastName || !login || !password) {
+      const error = 'All fields are required';
+      return res.status(400).json({ id: -1, error });
+    }
+  
+    try {
+      // Check if user already exists
+      const db = client.db('Test');
+      const userExists = await db.collection('Users').findOne({ Login: login });
+  
+      if (userExists) {
+        console.log("User already exists");
+        return res.status(409).json({ id: -1, error: 'User already exists' });
+      }
+  
+      const userId = Math.floor(Math.random() * 10000000); // Better user ID generation
+  
+      const newUser = {
+        FirstName: firstName,
+        LastName: lastName,
+        UserId: userId,
+        Login: login,
+        Password: password, // You should hash this password in production
+      };
+  
+      const result = await db.collection('Users').insertOne(newUser);
+      console.log('User saved to database with ID:', userId);
+  
+      res.status(200).json({ id: userId, error: '' });
+    } catch (e) {
+      console.error('Registration error:', e);
+      res.status(500).json({ id: -1, error: e.toString() });
+    }
+  });
