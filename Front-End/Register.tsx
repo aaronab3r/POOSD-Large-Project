@@ -1,5 +1,15 @@
 import React, { useState } from "react";
 
+const app_name = 'cop4331-1.online';
+
+function buildPath(route: string): string {
+    if (process.env.NODE_ENV !== 'development') {
+        return 'http://' + app_name + ':5000/' + route;
+    } else {
+        return 'http://localhost:5000/' + route;
+    }
+}
+
 export default function Register() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -14,7 +24,7 @@ export default function Register() {
     }
 
     try {
-      const response = await fetch("http://165.227.65.153:5000/api/register", {
+      const response = await fetch(buildPath("api/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ firstName, lastName, login, password }),
