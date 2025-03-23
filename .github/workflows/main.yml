@@ -1,0 +1,44 @@
+# Note: This is a very basic CI/CD pipeline that only keeps the website up-to-date with our production application
+  # It is possible to add automatic tests to this
+  # When doing a pull request through GitHub, you must wait for the pre tests to be complete before clicking merge pull request, otherwise you risk crashing your droplet
+name: CI/CD Pipeline
+on: # specifies what causes the workflow file to execute, which id does if there is a push or pull to the main branch; could be configured to execute based on time, etc.
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs: # holds scripts, actions, and commands we want GitHub to do to prepare for transfer 
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: 22.14.0
+    - name: Install dependencies
+      run: npm install
+  deploy: # this is where the action's vm connects to our server and builds the app
+    needs: build
+    runs-on: ubintu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Install sshpass
+      run: sudo apt-get install  -y sshpass
+    - name: Deploy to Digital Ocean Droplet
+      env:
+        SSH_HOST: ${{ secrets.SSH_HOST }}
+        SSH_KEY: ${{ secrets.SSH_KEY }}
+        SSH_USERNAME: ${{ secrets.SSH_USERNAME }} # MERN B lists the cd line as "cd /var/www/Ganttify.xyz/html" but the /var/www directory only leads to html
+      run : |
+        sshpass -p "${SSH_KEY}" ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${SSH_HOST}
+        cd /var/www/html
+        git pull origin master
+        npm install
+        npm run build
+        pm2 restart express-server
+        EOF
