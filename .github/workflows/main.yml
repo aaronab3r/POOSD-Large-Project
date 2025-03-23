@@ -37,7 +37,7 @@ jobs: # holds scripts, actions, and commands we want GitHub to do to prepare for
       run : |
         sshpass -p "${SSH_KEY}" ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${SSH_HOST}
         cd /var/www/html
-        git pull origin master
+        git pull origin main
         npm install
         npm run build
         pm2 restart express-server
