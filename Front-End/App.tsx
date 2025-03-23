@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import backgroundImage from "./images/background.jpg";
+import YourIndex from "./YourIndex";
 
 export default function App() {
   const [showAuth, setShowAuth] = useState(false);
@@ -67,7 +69,7 @@ export default function App() {
       if (response.ok) {
         setMessage("Login successful!");
         // Redirect after login
-        window.location.href = '/cards'; 
+        window.location.href = '/your-index'; 
       } else {
         setMessage(`Error: ${data.error}`);
       }
@@ -77,96 +79,106 @@ export default function App() {
   };
 
   return (
-    <div style={styles.container}>
-      {!showAuth ? (
-        // Welcome Screen
-        <div style={styles.welcomeContainer}>
-          <h1 style={styles.heading}>Welcome to Fish Net!</h1>
-          <div style={styles.card}>
-            <button style={styles.button} onClick={() => setShowAuth(true)}>
-              Start Diving
-            </button>
-          </div>
-        </div>
-      ) : (
-        // Login/Register Screen
-        <div style={styles.authContainer}>
-          <h1 style={styles.heading}>
-          {showRegister ? (
-          <span>Create an Account</span> // Wrapped in <span> to match JSX type
-        ) : (
-          <span>
-            Welcome to <br /> FishNet
-          </span>
-        )}
-          </h1>
-          <div style={styles.formBox}>
-            {showRegister && (
-              <>
-                <input
-                  style={styles.input}
-                  type="text"
-                  placeholder="First Name"
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-                <input
-                  style={styles.input}
-                  type="text"
-                  placeholder="Last Name"
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-              </>
-            )}
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="Username"
-              onChange={(e) => setLogin(e.target.value)}
-            />
-            <input
-              style={styles.input}
-              type="password"
-              placeholder="Password"
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            {showRegister && (
-              <input
-                style={styles.input}
-                type="password"
-                placeholder="Confirm Password"
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            )}
-
-            {showRegister ? (
-              <button style={styles.button} onClick={handleRegister}>
-                Register
-              </button>
+    <Router>
+      <Routes>
+        <Route path="/your-index" element={<YourIndex />} />
+        <Route path="/" element={
+          <div style={styles.container}>
+            {!showAuth ? (
+              // Welcome Screen
+              <div style={styles.welcomeContainer}>
+                <h1 style={styles.heading}>Welcome to Fish Net!</h1>
+                <div style={styles.card}>
+                  <button style={styles.button} onClick={() => setShowAuth(true)}>
+                    Start Diving
+                  </button>
+                  <Link to="/your-index" style={styles.bypassButton}>
+                    Bypass
+                  </Link>
+                </div>
+              </div>
             ) : (
-              <button style={styles.button} onClick={handleLogin}>
-                Login
-              </button>
+              // Login/Register Screen
+              <div style={styles.authContainer}>
+                <h1 style={styles.heading}>
+                  {showRegister ? (
+                    <span>Create an Account</span>
+                  ) : (
+                    <span>
+                      Welcome to <br /> FishNet
+                    </span>
+                  )}
+                </h1>
+                <div style={styles.formBox}>
+                  {showRegister && (
+                    <>
+                      <input
+                        style={styles.input}
+                        type="text"
+                        placeholder="First Name"
+                        onChange={(e) => setFirstName(e.target.value)}
+                      />
+                      <input
+                        style={styles.input}
+                        type="text"
+                        placeholder="Last Name"
+                        onChange={(e) => setLastName(e.target.value)}
+                      />
+                    </>
+                  )}
+                  <input
+                    style={styles.input}
+                    type="text"
+                    placeholder="Username"
+                    onChange={(e) => setLogin(e.target.value)}
+                  />
+                  <input
+                    style={styles.input}
+                    type="password"
+                    placeholder="Password"
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  {showRegister && (
+                    <input
+                      style={styles.input}
+                      type="password"
+                      placeholder="Confirm Password"
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  )}
+
+                  {showRegister ? (
+                    <button style={styles.button} onClick={handleRegister}>
+                      Register
+                    </button>
+                  ) : (
+                    <button style={styles.button} onClick={handleLogin}>
+                      Login
+                    </button>
+                  )}
+
+                  <p style={styles.message}>{message}</p>
+
+                  <button
+                    style={styles.toggleButton}
+                    onClick={() => setShowRegister(!showRegister)}
+                  >
+                    {showRegister ? "Already have an account? Login" : "Don't have an account? Register"}
+                  </button>
+
+                  <button
+                    style={styles.toggleButton}
+                    onClick={() => setShowAuth(false)}
+                  >
+                    Back to Welcome Page
+                  </button>
+                </div>
+              </div>
             )}
-
-            <p style={styles.message}>{message}</p>
-
-            <button
-              style={styles.toggleButton}
-              onClick={() => setShowRegister(!showRegister)}
-            >
-              {showRegister ? "Already have an account? Login" : "Don't have an account? Register"}
-            </button>
-
-            <button
-              style={styles.toggleButton}
-              onClick={() => setShowAuth(false)}
-            >
-              Back to Welcome Page
-            </button>
           </div>
-        </div>
-      )}
-    </div>
+        } />
+      </Routes>
+    </Router>
   );
 }
 
@@ -252,5 +264,17 @@ const styles = {
     fontSize: "14px",
     color: "red",
   },
+  bypassButton: {
+    marginTop: "10px",
+    padding: "5px 10px",
+    width: "100px",
+    borderRadius: "5px",
+    border: "none",
+    backgroundColor: "#ff4444",
+    color: "white",
+    fontSize: "12px",
+    cursor: "pointer",
+    textDecoration: "none",
+    textAlign: "center" as "center",
+  },
 };
-
