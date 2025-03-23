@@ -2,6 +2,7 @@ import { useState } from "react";
 import backgroundImage from "./images/background.jpg";
 
 export default function App() {
+  const [showAuth, setShowAuth] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -11,16 +12,11 @@ export default function App() {
   const [message, setMessage] = useState("");
 
   const app_name = 'cop4331-1.online';
-  function buildPath(route:string) : string
-  {
-      if (process.env.NODE_ENV != 'development')
-      {
-          return 'http://' + app_name + ':5000/' + route;
-      }
-      else
-      {
-          return 'http://localhost:5000/' + route;
-      }
+
+  function buildPath(route: string): string {
+    return process.env.NODE_ENV !== 'development'
+      ? `http://${app_name}:5000/${route}`
+      : `http://localhost:5000/${route}`;
   }
 
   const handleRegister = async () => {
@@ -44,7 +40,7 @@ export default function App() {
 
       if (response.ok) {
         setMessage(`Registration successful! User ID: ${data.id}`);
-        setShowRegister(false); // Switch to login after successful registration
+        setShowRegister(false); //Switch to login after successful registration
       } else {
         setMessage(`Error: ${data.error}`);
       }
@@ -70,10 +66,8 @@ export default function App() {
 
       if (response.ok) {
         setMessage("Login successful!");
-
-        // Redirect to dashboard or another page if needed
-        window.location.href = '/cards';
-        
+        // Redirect after login
+        window.location.href = '/cards'; 
       } else {
         setMessage(`Error: ${data.error}`);
       }
@@ -84,74 +78,94 @@ export default function App() {
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.heading}>
-        {showRegister ? (
+      {!showAuth ? (
+        // Welcome Screen
+        <div style={styles.welcomeContainer}>
+          <h1 style={styles.heading}>Welcome to Fish Net!</h1>
+          <div style={styles.card}>
+            <button style={styles.button} onClick={() => setShowAuth(true)}>
+              Start Diving
+            </button>
+          </div>
+        </div>
+      ) : (
+        // Login/Register Screen
+        <div style={styles.authContainer}>
+          <h1 style={styles.heading}>
+          {showRegister ? (
           <span>Create an Account</span> // Wrapped in <span> to match JSX type
         ) : (
           <span>
             Welcome to <br /> FishNet
           </span>
         )}
-      </h1>
-      <div style={styles.formBox}>
-        {showRegister && (
-          <>
+          </h1>
+          <div style={styles.formBox}>
+            {showRegister && (
+              <>
+                <input
+                  style={styles.input}
+                  type="text"
+                  placeholder="First Name"
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+                <input
+                  style={styles.input}
+                  type="text"
+                  placeholder="Last Name"
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              </>
+            )}
             <input
               style={styles.input}
               type="text"
-              placeholder="First Name"
-              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="Username"
+              onChange={(e) => setLogin(e.target.value)}
             />
             <input
               style={styles.input}
-              type="text"
-              placeholder="Last Name"
-              onChange={(e) => setLastName(e.target.value)}
+              type="password"
+              placeholder="Password"
+              onChange={(e) => setPassword(e.target.value)}
             />
-          </>
-        )}
-        <input
-          style={styles.input}
-          type="text"
-          placeholder="Username"
-          onChange={(e) => setLogin(e.target.value)}
-        />
-        <input
-          style={styles.input}
-          type="password"
-          placeholder="Password"
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {showRegister && (
-          <input
-            style={styles.input}
-            type="password"
-            placeholder="Confirm Password"
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
-        )}
+            {showRegister && (
+              <input
+                style={styles.input}
+                type="password"
+                placeholder="Confirm Password"
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            )}
 
-        {showRegister ? (
-          <button style={styles.button} onClick={handleRegister}>
-            Register
-          </button>
-        ) : (
-          <button style={styles.button} onClick={handleLogin}>
-            Login
-          </button>
-        )}
+            {showRegister ? (
+              <button style={styles.button} onClick={handleRegister}>
+                Register
+              </button>
+            ) : (
+              <button style={styles.button} onClick={handleLogin}>
+                Login
+              </button>
+            )}
 
-        <p style={styles.message}>{message}</p>
+            <p style={styles.message}>{message}</p>
 
-        <button
-          style={styles.toggleButton}
-          onClick={() => setShowRegister(!showRegister)}
-        >
-          {showRegister
-            ? "Already have an account? Login"
-            : "Don't have an account? Register"}
-        </button>
-      </div>
+            <button
+              style={styles.toggleButton}
+              onClick={() => setShowRegister(!showRegister)}
+            >
+              {showRegister ? "Already have an account? Login" : "Don't have an account? Register"}
+            </button>
+
+            <button
+              style={styles.toggleButton}
+              onClick={() => setShowAuth(false)}
+            >
+              Back to Welcome Page
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -167,12 +181,33 @@ const styles = {
     backgroundSize: "cover",
     backgroundPosition: "center",
   },
+  welcomeContainer: {
+    display: "flex",
+    flexDirection: "column" as "column",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100vh",
+  },
+  authContainer: {
+    display: "flex",
+    flexDirection: "column" as "column",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   heading: {
     fontSize: "40px",
+    color: "white",
     textAlign: "center" as "center",
-    display: "block",
-    width: "100%",
-    lineHeight: "1.2",
+  },
+  card: {
+    backgroundColor: "white",
+    padding: "20px",
+    borderRadius: "10px",
+    display:"flex",
+    justifyContent: "center", 
+    alignItems: "center", 
+    flexDirection: "column" as "column", 
+    minWidth: "200px", 
   },
   formBox: {
     marginTop: "20px",
@@ -191,7 +226,6 @@ const styles = {
     border: "1px solid black",
   },
   button: {
-    marginTop: "20px",
     padding: "10px",
     width: "150px",
     borderRadius: "10px",
@@ -199,6 +233,9 @@ const styles = {
     backgroundColor: "yellow",
     fontSize: "16px",
     cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   toggleButton: {
     marginTop: "15px",
@@ -216,3 +253,4 @@ const styles = {
     color: "red",
   },
 };
+
