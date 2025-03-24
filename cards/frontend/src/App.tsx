@@ -1,23 +1,19 @@
-//import React from 'react';
-import { BrowserRouter as Router, Route, Redirect, Switch } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
-//import LoginPage from './pages/LoginPage';
 import CardPage from './pages/CardPage';
-import AppPage from './pages/App';
+import WelcomePage from './pages/WelcomePage';
+import YourIndex from './pages/YourIndex';
 
 function App() {
   return (
-  <Router >
-    <Switch>
-      <Route path="/" exact>
-        <AppPage />
-      </Route>
-      <Route path="/cards" exact>
-        <CardPage />
-      </Route>
-      <Redirect to="/" />
-    </Switch>
-  </Router>
+    <Router>
+      <Routes>
+        <Route path="/" element={<WelcomePage />} />
+        <Route path="/cards" element={<CardPage />} />
+        <Route path="/your-index" element={<YourIndex />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 
