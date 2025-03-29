@@ -3,6 +3,7 @@ import './App.css';
 import CardPage from './pages/CardPage';
 import WelcomePage from './pages/WelcomePage';
 import YourIndex from './pages/YourIndex';
+//import LoginPage from './pages/LoginPage';
 
 function App() {
   return (

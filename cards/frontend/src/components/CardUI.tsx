@@ -1,9 +1,17 @@
+/*
+    This file was used for testing while setting up the MERN stack.
+    It is not indended to be used, but may serve as a useful source for changes we may make in the future.
+    I think it may be worth keeping around, at least for the time being.
+*/
 import React, { useState } from 'react';
+import { buildPath } from './Path';
+import { retrieveToken, storeToken } from '../tokenStorage';
 
-function CardUI() {
+function CardUI() 
+{
     var _ud = localStorage.getItem('user_data');
     var ud = JSON.parse(_ud || '{}');
-    var userId = ud?.id;
+    var userId = ud.id;
     
     const [message, setMessage] = useState<string>('');
     const [searchResults, setResults] = useState<string>('');
@@ -11,23 +19,10 @@ function CardUI() {
     const [search, setSearchValue] = useState<string>('');
     const [card, setCardNameValue] = useState<string>('');
 
-    const app_name = 'cop4331-1.online';
-    function buildPath(route:string) : string
-    {
-        if (process.env.NODE_ENV != 'development')
-        {
-            return 'http://' + app_name + ':5000/' + route;
-        }
-        else
-        {
-            return 'http://localhost:5000/' + route;
-        }
-    }
-
     async function addCard(e: React.FormEvent<HTMLElement>): Promise<void> {
         e.preventDefault();
 
-        let obj = { userId: userId, card: card };
+        let obj = { userId:userId, card:card, jwtToken: retrieveToken() };
         let js = JSON.stringify(obj);
 
         try {
@@ -37,13 +32,18 @@ function CardUI() {
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            let txt = await response.text();
-            let res = JSON.parse(txt);
+            let res = await response.json();
+            //let res = JSON.parse(txt);
 
             if (res.error && res.error.length > 0) {
                 setMessage("API Error:" + res.error);
             } else {
                 setMessage('Card has been added');
+            }
+
+            // Store the jwt for future use
+            if(obj.jwtToken != null) {
+                storeToken(obj.jwtToken)
             }
         }
         catch (error: unknown) {
@@ -54,8 +54,9 @@ function CardUI() {
     async function searchCard(e: React.MouseEvent<HTMLButtonElement>): Promise<void> {
         e.preventDefault();
 
-        let obj = { userId: userId, search: search };
+        let obj = { userId:userId, search:search, jwtToken: retrieveToken() };
         let js = JSON.stringify(obj);
+        let res: any;
 
         try {
             const response = await fetch(buildPath('api/searchcards'), {
@@ -64,27 +65,33 @@ function CardUI() {
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            let txt = await response.text();
-            let res = JSON.parse(txt);
+            let res = await response.json();
+
+            // Add null/undefined check for _results before accessing length
             let _results = res.results;
             let resultText = '';
             
-            for (let i = 0; i < _results.length; i++) {
-                resultText += _results[i];
-                if (i < _results.length - 1) {
-                    resultText += ', ';
+            if(_results && Array.isArray(_results)) {
+                for (let i = 0; i < _results.length; i++) {
+                    resultText += _results[i];
+                    if (i < _results.length - 1) {
+                        resultText += ', ';
+                    }
                 }
             }
             
             setResults('Card(s) have been retrieved');
             setCardList(resultText);
-        }
-        catch (error: unknown) {
-            if (error instanceof Error) {
-                setResults(error.toString());
-            } else {
-                setResults(String(error));
+
+            // Store the jwt for future use
+            if(obj.jwtToken != null) {
+                storeToken(obj.jwtToken)
             }
+        }
+        catch (e: any) {
+            console.log(e.toString());
+            setResults(e.toString());
+            storeToken(res.jwtToken);
         }
     }
 

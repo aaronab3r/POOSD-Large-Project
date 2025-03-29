@@ -1,6 +1,15 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { buildPath } from "../components/Path";
+import { useNavigate } from "react-router-dom";
 import backgroundImage from "./images/background.jpg";
+import { jwtDecode } from "jwt-decode";
+import { storeToken } from "../tokenStorage.tsx";
+
+interface JWTPayLoad {
+  userId: number;
+  firstName: string;
+  lastName: string;
+}
 
 export default function App() {
   const [showAuth, setShowAuth] = useState(false);
@@ -12,14 +21,6 @@ export default function App() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
-
-  const app_name = 'cop4331-1.online';
-
-  function buildPath(route: string): string {
-    return process.env.NODE_ENV !== 'development'
-      ? `http://${app_name}:5000/${route}`
-      : `http://localhost:5000/${route}`;
-  }
 
   const handleRegister = async () => {
     if (!firstName || !lastName || !login || !password || !confirmPassword) {
@@ -65,13 +66,38 @@ export default function App() {
       });
 
       const data = await response.json();
+      const { accessToken } = data;
+      const decoded = jwtDecode(accessToken) as JWTPayLoad;
 
-      if (response.ok) {
-        setMessage("Login successful!");
-        // Redirect after login
-        navigate('/your-index');
-      } else {
-        setMessage(`Error: ${data.error}`);
+      // Store the token so that it can be used later
+      storeToken(accessToken)
+
+      try
+      {
+        // Extract information out of decoded JSON Web Token
+        var ud = decoded;
+        var userId = ud.userId;
+        var firstName = ud.firstName;
+        var lastName = ud.lastName;
+
+        if (userId <= 0)
+        {
+            setMessage('User/Password combination incorrect');
+        }
+        else
+        {
+          // Store the information about the user into user_data so it can be accessed later
+          var user = {firstName:firstName,lastName:lastName,id:userId};
+          localStorage.setItem('user_data', JSON.stringify(user));
+
+          setMessage('Login Successful!');
+          navigate('/your-index');
+        }
+      }
+      catch(e: any)
+      {
+          alert( e.toString() );
+          return;
       }
     } catch (error) {
       setMessage("Failed to connect to the server.");
@@ -88,9 +114,9 @@ export default function App() {
             <button style={styles.button} onClick={() => setShowAuth(true)}>
               Start Diving
             </button>
-            <Link to="/your-index" style={styles.bypassButton}>
+            {/* <Link to="/your-index" style={styles.bypassButton}>
               Bypass
-            </Link>
+            </Link> */}
           </div>
         </div>
       ) : (

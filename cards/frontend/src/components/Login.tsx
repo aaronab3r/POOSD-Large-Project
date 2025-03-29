@@ -1,4 +1,18 @@
+/*
+    This file was used for testing while setting up the MERN stack.
+    It is not indended to be used, but may serve as a useful source for changes we may make in the future.
+    I think it may be worth keeping around, at least for the time being.
+*/
 import React, { useState } from 'react';
+import { buildPath } from './Path';
+import { jwtDecode } from "jwt-decode";
+import { storeToken } from '../tokenStorage';
+
+interface JWTPayLoad {
+    userId: number;
+    firstName: string;
+    lastName: string;
+}
 
 function Login()
 {
@@ -6,19 +20,6 @@ function Login()
     const [message,setMessage] = useState('');
     const [loginName,setLoginName] = React.useState('');
     const [loginPassword,setPassword] = React.useState('');
-
-    const app_name = 'cop4331-1.online';
-    function buildPath(route:string) : string
-    {
-        if (process.env.NODE_ENV != 'development')
-        {
-            return 'http://' + app_name + ':5000/' + route;
-        }
-        else
-        {
-            return 'http://localhost:5000/' + route;
-        }
-    }
 
     async function doLogin(event:any) : Promise<void>
     {
@@ -31,20 +32,37 @@ function Login()
         {
             const response = await fetch(buildPath('api/login'), {method:'POST',body:js,headers:{'Content-Type': 'application/json'}});
 
-            var res = JSON.parse(await response.text());
+            var res = await response.json();
+            const { accessToken } = res;
+            const decoded = jwtDecode(accessToken) as JWTPayLoad;
 
-            if( res.id <= 0 )
+            // Store the token so that it can be used later
+            storeToken(accessToken)
+
+            try
             {
-                setMessage('User/Password combination incorrect');
+                var ud = decoded;
+                var userId = ud.userId;
+                var firstName = ud.firstName;
+                var lastName = ud.lastName;
+
+                if (userId <= 0)
+                {
+                    setMessage('User/Password combination incorrect');
+                }
+                else
+                {
+                    var user = {firstName:firstName,lastName:lastName,id:userId};
+                    localStorage.setItem('user_data', JSON.stringify(user));
+
+                    setMessage('');
+                    window.location.href = '/cards';
+                }
             }
-            else
+            catch(e: any)
             {
-                var user = {firstName:res.firstName,lastName:res.lastName,id:res.id}
-                localStorage.setItem('user_data', JSON.stringify(user));
-
-                setMessage('');
-
-                window.location.href = '/cards';
+                alert( e.toString() );
+                return;
             }
         }
         catch(error:any)
