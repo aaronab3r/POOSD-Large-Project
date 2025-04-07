@@ -3,60 +3,8 @@ require('mongodb');
 token = require('./createJWT.js');
 
 exports.setApp = function ( app, client )
-{
-    app.post('/api/addcard', async (req, res, next) =>
-        {
-        // incoming: userId, color
-        // outgoing: error
-    
-        const { userId, card, jwtToken } = req.body;
-        // should include jwtToken
-
-        try
-        {
-            if( token.isExpired(jwtToken) )
-            {
-                var r  = {error:'The JWT is no longer valid', jwtToken: ''};
-                res.status(200).json(r)
-                return;
-            }
-        }
-        catch(e)
-        {
-            console.log(e.message);
-            var r = {error:e.message, jwtToken: ''};
-            res.status(200).json(r);
-            return;
-        }
-
-        const newCard = {Card:card,UserId:userId};
-        var error = '';
-    
-        try
-        {
-            const db = client.db('Test');
-            const result = db.collection('Cards').insertOne(newCard);
-        }
-        catch(e)
-        {
-            error = e.toString();
-        }
-
-        var refreshedToken = null;
-        try
-        {
-            refreshedToken = token.refresh(jwtToken);
-        }
-        catch(e)
-        {
-            console.log(e.message);
-        }
-    
-        var ret = { error:error, jwtToken:refreshedToken };
-
-        res.status(200).json(ret);
-    });
-    
+{   
+    // Login user
     app.post('/api/login', async (req, res, next) =>
         {
         // incoming: login, password
@@ -101,62 +49,7 @@ exports.setApp = function ( app, client )
             // you can put whatever you want into a JWT
     });
     
-    app.post('/api/searchcards', async (req, res, next) =>
-    {
-        // incoming: userId, search
-        // outgoing: results[], error
-    
-        var error = '';
-    
-        const { userId, search, jwtToken } = req.body;
-        // should include jwtToken        
-
-        // try
-        // {
-        //     if( token.isExpired(jwtToken) )
-        //     {
-        //         var r  = {error:'The JWT is no longer valid', jwtToken: ''};
-        //         res.status(200).json(r)
-        //         return;
-        //     }
-        // }
-        // catch(e)
-        // {
-        //     console.log(e.message);
-        //     var r = {error:e.message, jwtToken: ''};
-        //     res.status(200).json(r);
-        //     return;
-        // }
-    
-        var _search = search.trim();
-    
-        const db = client.db('Test');
-        const results = await db.collection('Cards').find({"Card":{$regex:_search+'.*', $options:'i'}}).toArray();
-    
-        // Check if results is defined before using length
-        var _ret = [];
-        if (results && Array.isArray(results)) {
-            for(var i=0; i<results.length; i++) {
-                if (results[i] && results[i].Card) {
-                    _ret.push(results[i].Card);
-                }
-            }
-        }
-
-        var refreshedToken = null;
-        try
-        {
-            refreshedToken = token.refresh(jwtToken);
-        }
-        catch(e)
-        {
-            console.log(e.message);
-        }
-    
-        var ret = {results:_ret, error:error, jwtToken:refreshedToken};
-        res.status(200).json(ret);
-    });
-    
+    // Register new user
     app.post('/api/register', async (req, res) => {
         // incoming: firstName, lastName, login, password
         // outgoing: id, error
@@ -199,6 +92,7 @@ exports.setApp = function ( app, client )
         }
     });
 
+    // variables used in the next api endpoints
     const multer = require('multer');
     const { GridFsStorage } = require('multer-gridfs-storage');
     const { MongoClient } = require('mongodb');
@@ -221,71 +115,72 @@ exports.setApp = function ( app, client )
 
     const upload = multer({ storage });
 
+    // Upload new card
     app.post('/api/cards', upload.single('image'), async (req, res) => {
-    // incoming: userId, tags, date, location, plus file in 'image' field
-    // outgoing: cardId, error
+        // incoming: userId, tags, date, location, plus file in 'image' field
+        // outgoing: cardId, error
 
-    const { userId, tags, date, location } = req.body;
-    const imageFile = req.file; // This contains the GridFS file info
+        const { userId, tags, date, location } = req.body;
+        const imageFile = req.file; // This contains the GridFS file info
 
-    // Validate required input
-    if (!userId || !tags || !date || !location) {
-        // If a file was uploaded but other fields are invalid, clean it up
-        if (imageFile) {
-        const bucket = new GridFSBucket(db, { bucketName: 'images' });
-        await bucket.delete(imageFile.id);
-        }
-        return res.status(400).json({ cardId: -1, error: 'userId is required' });
-    }
-
-    try {
-        // Check if user exists
-        const userExists = await db.collection('Users').findOne({ UserID: parseInt(userId) });
-
-        if (!userExists) {
-        // Clean up uploaded file if user doesn't exist
-        if (imageFile) {
+        // Validate required input
+        if (!userId || !tags || !date || !location) {
+            // If a file was uploaded but other fields are invalid, clean it up
+            if (imageFile) {
             const bucket = new GridFSBucket(db, { bucketName: 'images' });
             await bucket.delete(imageFile.id);
+            }
+            return res.status(400).json({ cardId: -1, error: 'userId is required' });
         }
-        return res.status(404).json({ cardId: -1, error: 'User not found' });
+
+        try {
+            // Check if user exists
+            const userExists = await db.collection('Users').findOne({ UserID: parseInt(userId) });
+
+            if (!userExists) {
+            // Clean up uploaded file if user doesn't exist
+            if (imageFile) {
+                const bucket = new GridFSBucket(db, { bucketName: 'images' });
+                await bucket.delete(imageFile.id);
+            }
+            return res.status(404).json({ cardId: -1, error: 'User not found' });
+            }
+
+            const cardId = Math.floor(Math.random() * 10000000);
+
+            const newCard = {
+            CardID: cardId,
+            UserID: parseInt(userId),
+            Tags: tags ? tags.split(',').map(tag => tag.trim()) : [], // Assuming tags come as comma-separated string
+            // ^ this line was giving errors
+            Location: location,
+            Date: date,
+            ImageId: imageFile ? imageFile.id : null, // Store GridFS file ID
+            CreatedAt: new Date(),
+            UpdatedAt: new Date(),
+            Likes: 0,
+            Comments: []
+            };
+
+            await db.collection('Cards').insertOne(newCard);
+            console.log('Card saved with ID:', cardId);
+
+            res.status(200).json({ 
+            cardId, 
+            error: '',
+            imageId: imageFile ? imageFile.id : null
+            });
+        } catch (e) {
+            console.error('Card creation error:', e);
+            // Clean up any uploaded file if error occurs
+            if (req.file) {
+            const bucket = new GridFSBucket(db, { bucketName: 'images' });
+            await bucket.delete(req.file.id).catch(cleanupError => {
+                console.error('Failed to cleanup image:', cleanupError);
+            });
+            }
+            res.status(500).json({ cardId: -1, error: e.toString() });
         }
-
-        const cardId = Math.floor(Math.random() * 10000000);
-
-        const newCard = {
-        CardID: cardId,
-        UserID: parseInt(userId),
-        Tags: tags ? tags.split(',').map(tag => tag.trim()) : [], // Assuming tags come as comma-separated string
-        // ^ this line was giving errors
-        Location: location,
-        Date: date,
-        ImageId: imageFile ? imageFile.id : null, // Store GridFS file ID
-        CreatedAt: new Date(),
-        UpdatedAt: new Date(),
-        Likes: 0,
-        Comments: []
-        };
-
-        await db.collection('Cards').insertOne(newCard);
-        console.log('Card saved with ID:', cardId);
-
-        res.status(200).json({ 
-        cardId, 
-        error: '',
-        imageId: imageFile ? imageFile.id : null
-        });
-    } catch (e) {
-        console.error('Card creation error:', e);
-        // Clean up any uploaded file if error occurs
-        if (req.file) {
-        const bucket = new GridFSBucket(db, { bucketName: 'images' });
-        await bucket.delete(req.file.id).catch(cleanupError => {
-            console.error('Failed to cleanup image:', cleanupError);
-        });
-        }
-        res.status(500).json({ cardId: -1, error: e.toString() });
-    }
     });
 
     // Get Card
