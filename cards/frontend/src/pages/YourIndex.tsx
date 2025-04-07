@@ -118,10 +118,14 @@ export default function YourIndex() {
 const styles = {
   container: {
     minHeight: "100vh",
+    width: "100vw",
     backgroundImage: `url(${backgroundImage})`,
     backgroundSize: "cover",
     backgroundPosition: "center",
     padding: "20px",
+    position: 'fixed' as 'fixed',
+    top: 0,
+    left: 0,
   },
   heading: {
     fontSize: "40px",
