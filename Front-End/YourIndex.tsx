@@ -9,6 +9,7 @@ interface Finding {
   imageUrl: string;
   location: string;
   date: Date;
+  keywords: string[];
 }
 
 export default function YourIndex() {
@@ -18,6 +19,7 @@ export default function YourIndex() {
   const [location, setLocation] = useState("");
   const [date, setDate] = useState<Date | null>(new Date());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [keywords, setKeywords] = useState("");
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -29,12 +31,14 @@ export default function YourIndex() {
   };
 
   const handleSubmit = () => {
-    if (selectedImage && location && date) {
+    if (selectedImage && location && date && keywords) {
+      const keywordsArray = keywords.split(',').map(keyword => keyword.trim());
       const newFinding: Finding = {
         id: findings.length + 1,
         imageUrl: previewUrl!,
         location,
         date,
+        keywords: keywordsArray,
       };
       setFindings([...findings, newFinding]);
       setShowUploadForm(false);
@@ -42,6 +46,7 @@ export default function YourIndex() {
       setLocation("");
       setDate(new Date());
       setPreviewUrl(null);
+      setKeywords("");
     }
   };
 
@@ -87,6 +92,17 @@ export default function YourIndex() {
                 />
               </div>
             </div>
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Keywords:</label>
+              <input
+                type="text"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                style={styles.input}
+                placeholder="Enter keywords separated by commas (e.g., fish, cave, reef)"
+              />
+              <p style={styles.helperText}>Separate keywords with commas</p>
+            </div>
             <button onClick={handleSubmit} style={styles.submitButton}>
               Save Finding
             </button>
@@ -106,6 +122,9 @@ export default function YourIndex() {
               <p style={styles.detailText}>Location: {finding.location}</p>
               <p style={styles.detailText}>
                 Date: {finding.date.toLocaleDateString()}
+              </p>
+              <p style={styles.detailText}>
+                Keywords: {finding.keywords.join(', ')}
               </p>
             </div>
           </div>
@@ -173,6 +192,11 @@ const styles = {
     padding: "8px",
     borderRadius: "5px",
     border: "1px solid #ccc",
+  },
+  helperText: {
+    fontSize: "12px",
+    color: "#666",
+    marginTop: "2px",
   },
   datePickerWrapper: {
     width: "100%",
