@@ -1,3 +1,6 @@
+// Cards endpoint, deleteCard, uploadCard
+
+
 import { useState } from "react";
 import backgroundImage from "./images/background.jpg";
 import DatePicker from "react-datepicker";
@@ -9,6 +12,7 @@ interface Finding {
   imageUrl: string;
   location: string;
   date: Date;
+  keywords: string[];
 }
 
 export default function YourIndex() {
@@ -18,6 +22,10 @@ export default function YourIndex() {
   const [location, setLocation] = useState("");
   const [date, setDate] = useState<Date | null>(new Date());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [keywords, setKeywords] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [findingToDelete, setFindingToDelete] = useState<number | null>(null);
+  const [editingFinding, setEditingFinding] = useState<Finding | null>(null);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -29,20 +37,65 @@ export default function YourIndex() {
   };
 
   const handleSubmit = () => {
-    if (selectedImage && location && date) {
+    if (location && date && keywords) {
+      const keywordsArray = keywords.split(',').map(keyword => keyword.trim());
       const newFinding: Finding = {
-        id: findings.length + 1,
-        imageUrl: previewUrl!,
+        id: editingFinding ? editingFinding.id : findings.length + 1,
+        imageUrl: editingFinding ? editingFinding.imageUrl : previewUrl!,
         location,
         date,
+        keywords: keywordsArray,
       };
-      setFindings([...findings, newFinding]);
+
+      if (editingFinding) {
+        setFindings(prevFindings => 
+          prevFindings.map(finding => 
+            finding.id === editingFinding.id ? newFinding : finding
+          ).sort((a, b) => b.date.getTime() - a.date.getTime())
+        );
+        setEditingFinding(null);
+      } else {
+        if (!selectedImage) return; // Only require image for new findings
+        setFindings(prevFindings => 
+          [...prevFindings, newFinding].sort((a, b) => b.date.getTime() - a.date.getTime())
+        );
+      }
+
       setShowUploadForm(false);
       setSelectedImage(null);
       setLocation("");
       setDate(new Date());
       setPreviewUrl(null);
+      setKeywords("");
     }
+  };
+
+  const handleEditClick = (finding: Finding) => {
+    setEditingFinding(finding);
+    setLocation(finding.location);
+    setDate(finding.date);
+    setKeywords(finding.keywords.join(', '));
+    setShowUploadForm(true);
+  };
+
+  const handleDeleteClick = (id: number) => {
+    setFindingToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (findingToDelete !== null) {
+      setFindings(prevFindings => 
+        prevFindings.filter(finding => finding.id !== findingToDelete)
+      );
+      setShowDeleteConfirm(false);
+      setFindingToDelete(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
+    setFindingToDelete(null);
   };
 
   return (
@@ -87,6 +140,17 @@ export default function YourIndex() {
                 />
               </div>
             </div>
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Keywords:</label>
+              <input
+                type="text"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                style={styles.input}
+                placeholder="Enter keywords separated by commas (e.g., fish, coral, reef)"
+              />
+              <p style={styles.helperText}>Separate keywords with commas</p>
+            </div>
             <button onClick={handleSubmit} style={styles.submitButton}>
               Save Finding
             </button>
@@ -107,10 +171,44 @@ export default function YourIndex() {
               <p style={styles.detailText}>
                 Date: {finding.date.toLocaleDateString()}
               </p>
+              <p style={styles.detailText}>
+                Keywords: {finding.keywords.join(', ')}
+              </p>
+              <div style={styles.buttonContainer}>
+                <button 
+                  onClick={() => handleEditClick(finding)}
+                  style={styles.editButton}
+                >
+                  Edit
+                </button>
+                <button 
+                  onClick={() => handleDeleteClick(finding.id)}
+                  style={styles.deleteButton}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
+
+      {showDeleteConfirm && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <h3>Confirm Delete</h3>
+            <p>Are you sure you want to delete this finding?</p>
+            <div style={styles.modalButtons}>
+              <button onClick={handleDeleteConfirm} style={styles.confirmButton}>
+                Yes, Delete
+              </button>
+              <button onClick={handleDeleteCancel} style={styles.cancelButton}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -207,5 +305,72 @@ const styles = {
   detailText: {
     margin: "5px 0",
     fontSize: "14px",
+  },
+  buttonContainer: {
+    display: "flex",
+    gap: "10px",
+    marginTop: "10px",
+  },
+  editButton: {
+    padding: "8px 16px",
+    backgroundColor: "#4285f4",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontSize: "14px",
+    flex: 1,
+  },
+  deleteButton: {
+    padding: "8px 16px",
+    backgroundColor: "#ff4444",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontSize: "14px",
+    flex: 1,
+  },
+  modalOverlay: {
+    position: "fixed" as "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: "white",
+    padding: "20px",
+    borderRadius: "10px",
+    textAlign: "center" as "center",
+    maxWidth: "400px",
+    width: "90%",
+  },
+  modalButtons: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "10px",
+    marginTop: "20px",
+  },
+  confirmButton: {
+    padding: "8px 16px",
+    backgroundColor: "#ff4444",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  cancelButton: {
+    padding: "8px 16px",
+    backgroundColor: "#ccc",
+    color: "black",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
   },
 }; 
