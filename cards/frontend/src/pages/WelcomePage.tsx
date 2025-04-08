@@ -115,7 +115,7 @@ export default function App() {
         <div>
             <div style={styles.welcomeContainer}>
               <div style={styles.homeBox}>
-              <h1 style={styles.heading}>Welcome to Fish Net!</h1>
+              <h1 style={styles.heading}>Welcome to FishNet!</h1>
               <p style={styles.subheading}>Make connections beyond the surface level</p>
 
                   <button style={styles.button} onClick={() => setShowAuth(true)}>
