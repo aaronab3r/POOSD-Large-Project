@@ -281,6 +281,12 @@ const styles = {
     flexDirection: "column" as "column",
     alignItems: "center",
     justifyContent: "center",
+    width:"100vw",
+    height:"100vh",
+    backgroundImage: `url(${backgroundImage})`,
+    backgroundSize: "cover",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
   },
   heading: {
     fontSize: "40px",
