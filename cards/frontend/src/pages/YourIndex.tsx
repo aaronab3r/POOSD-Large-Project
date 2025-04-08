@@ -6,6 +6,9 @@ import backgroundImage from "./images/background.jpg";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./styles/YourIndex.css";
+import { retrieveToken, storeToken } from "../tokenStorage";
+import { jwtDecode } from "jwt-decode";
+import { JWTPayLoad } from "./interfaces/interfaces";
 
 interface Finding {
   id: number;
@@ -46,6 +49,67 @@ interface Styles {
 }
 
 export default function YourIndex() {
+
+  // Load the JWT to get the UserID
+  // If we cannot load a JWT then the user is not logged in, and shouldn't be able to view this site
+  var userId = -1
+  try{
+    const jwtToken = retrieveToken() as any;
+
+    const decoded = jwtDecode(jwtToken) as JWTPayLoad;
+    storeToken(jwtToken);
+
+    userId = decoded.userId;
+  }
+  catch(e: any)
+  {
+    alert(e.toString() )
+    return; // exit the page
+    // might be a better idea to print out an error, then send the user back to the login page
+  }
+
+  // what we need for image upload
+    // previewUrl
+    // location
+    // date
+    // keywords (keywordsArray in handleSubmit)
+    // userId
+    // generate a CardId (id in handlesubmit seems to do this)
+    // a Date for CreatedAt and UpdatedAt
+      // both of these variables for upload will be set to "new Date()"
+
+
+  // what we need for image edit
+    // new location
+    // UpdateAt date (also just "new Date()")
+    // new keywords
+    // everything else stays the same
+
+  // what we need for Get Image
+    // CardId (as a parameter?)
+
+  // what we need for search cards
+    // location
+    // tags (keywordsArray)
+    // firstName (?)
+    // lastName (?)
+      // firstName and lastName should probably also be included in image upload if these are here
+
+    // at least one of these must be provided
+
+
+  // what we need for Edit cards
+    // CardId (passed as a parameter in the endpoint?)
+    // userId
+    // tags
+    // date
+    // location
+    // new image file (?)
+
+
+  // what we need for Delete card
+    // CardId
+
   const [findings, setFindings] = useState<Finding[]>([]);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
