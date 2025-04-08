@@ -4,6 +4,10 @@ import { useNavigate } from "react-router-dom";
 import backgroundImage from "./images/background.jpg";
 import { jwtDecode } from "jwt-decode";
 import { storeToken } from "../tokenStorage.tsx";
+import Camera from '../../icons/cameraicon.png';
+import Map from '../../icons/mapicon.png';
+import Person from '../../icons/personicon.png'
+import Services from '../components/Services.tsx';
 
 interface JWTPayLoad {
   userId: number;
@@ -108,17 +112,38 @@ export default function App() {
     <div style={styles.container}>
       {!showAuth ? (
         // Welcome Screen
-        <div style={styles.welcomeContainer}>
-          <h1 style={styles.heading}>Welcome to Fish Net!</h1>
-          <div style={styles.card}>
-            <button style={styles.button} onClick={() => setShowAuth(true)}>
-              Start Diving
-            </button>
-            {/* <Link to="/your-index" style={styles.bypassButton}>
-              Bypass
-            </Link> */}
-          </div>
+        <div>
+            <div style={styles.welcomeContainer}>
+              <div style={styles.homeBox}>
+              <h1 style={styles.heading}>Welcome to Fish Net!</h1>
+              <p style={styles.subheading}>Make connections beyond the surface level</p>
+
+                  <button style={styles.button} onClick={() => setShowAuth(true)}>
+                    Get started
+                  </button>
+
+              {/* <Link to="/your-index" style={styles.bypassButton}>
+                Bypass
+              </Link> */}
+            </div>
+
+        </div>        
+        <div style={styles.serviceContainer}> 
+        <h1>Dive into our services</h1>
+        <div style={styles.services}>
+     
+              <Services
+                  icon={Camera} text="Upload discoveries" 
+              />
+              <Services
+                  icon={Map} text="Map your dives" 
+              />
+              <Services
+                  icon={Person} text="Connect with divers" 
+              />
         </div>
+        </div>
+    </div>
       ) : (
         // Login/Register Screen
         <div style={styles.authContainer}>
@@ -207,28 +232,49 @@ const styles = {
     flexDirection: "column" as "column",
     alignItems: "center",
     justifyContent: "center",
-    height: "100vh",
+    minHeight: "100vh",
     width: "100vw",
-    backgroundImage: `url(${backgroundImage})`,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    position: 'fixed' as 'fixed',
-    top: 0,
-    left: 0,
+  },
+  homeBox:{
+    display: "flex",
+    flexDirection: "column" as "column",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor:"rgba(0, 0, 0, 0.7)",
+    marginTop:"170px",
+    padding:"40px",
+    maxHeight:"400px",
+    borderRadius:"20px",
+
   },
   welcomeContainer: {
     display: "flex",
     flexDirection: "column" as "column",
     alignItems: "center",
-    justifyContent: "center",
-    height: "100vh",
-    width: "100vw",
-    position: 'fixed' as 'fixed',
-    top: 0,
-    left: 0,
-    backgroundSize: 'cover',
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'center',
+    justifyContent: "space-between",
+    width:"100vw",
+    minHeight: "80vh",
+    backgroundImage: `url(${backgroundImage})`,
+    backgroundSize: "cover",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
+  },
+  serviceContainer:{
+    backgroundColor:"rgb(24, 74, 139)",
+    display:"flex",
+    justifyContent:"center",
+    alignItems:"center",
+    flexDirection: "column" as "column",
+  },
+  services:{
+      backgroundColor:"rgb(24, 74, 139)",
+      display:"flex",
+      flexDirection: "row" as "row",
+      minHeight:"200px",
+      width: "100vw",
+      justifyContent: "center",
+      alignItems:"center",
+      
   },
   authContainer: {
     display: "flex",
@@ -240,6 +286,14 @@ const styles = {
     fontSize: "40px",
     color: "white",
     textAlign: "center" as "center",
+    paddingTop:"20px",
+    marginBottom:"0px",
+  },
+  subheading:{
+    fontSize: "20px",
+    color: "white",
+    textAlign: "center" as "center",
+    marginBottom:"50px",
   },
   card: {
     backgroundColor: "white",
@@ -250,6 +304,7 @@ const styles = {
     alignItems: "center", 
     flexDirection: "column" as "column", 
     minWidth: "200px", 
+    position:"static",
   },
   formBox: {
     marginTop: "20px",
@@ -268,6 +323,7 @@ const styles = {
     border: "1px solid black",
   },
   button: {
+    color:"black",
     padding: "10px",
     width: "150px",
     borderRadius: "10px",

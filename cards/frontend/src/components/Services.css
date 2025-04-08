@@ -1,0 +1,39 @@
+.services {
+    position:relative;
+    display: flex;
+    flex-direction: column;
+    width:250px;
+    margin: 30px;
+    height:150px;
+    margin-top: 30px;
+    background-color: white;
+    border-radius: 20px;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.icon{
+    width:35px;
+    height:35px;
+    display:block;
+    border-radius:10px;
+}
+
+.description-box{
+    position:absoulte;
+    bottom:5px;
+    left:50%;
+    width:60%;
+    background-color:#ffffff;
+    padding:10px;
+    border-radius:15px;
+    text-align:center;
+}
+
+.text{
+    margin:0;
+    color:#333;
+    font-weight:bold;
+    font-size:16px;
+}
