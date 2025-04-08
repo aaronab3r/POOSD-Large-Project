@@ -1,6 +1,3 @@
-// Cards endpoint, deleteCard, uploadCard, editCard
-
-
 import { useState } from "react";
 import backgroundImage from "./images/background.jpg";
 import DatePicker from "react-datepicker";
@@ -20,6 +17,7 @@ interface Finding {
 
 interface Styles {
   container: React.CSSProperties;
+  header: React.CSSProperties;
   heading: React.CSSProperties;
   uploadSection: React.CSSProperties;
   fileInput: React.CSSProperties;
@@ -42,6 +40,8 @@ interface Styles {
   deleteButton: React.CSSProperties;
   modalOverlay: React.CSSProperties;
   modalContent: React.CSSProperties;
+  modalTitle: React.CSSProperties;
+  modalText: React.CSSProperties;
   modalButtons: React.CSSProperties;
   confirmButton: React.CSSProperties;
   cancelButton: React.CSSProperties;
@@ -67,48 +67,6 @@ export default function YourIndex() {
     return; // exit the page
     // might be a better idea to print out an error, then send the user back to the login page
   }
-
-  // what we need for image upload
-    // previewUrl
-    // location
-    // date
-    // keywords (keywordsArray in handleSubmit)
-    // userId
-    // generate a CardId (id in handlesubmit seems to do this)
-    // a Date for CreatedAt and UpdatedAt
-      // both of these variables for upload will be set to "new Date()"
-
-
-  // what we need for image edit
-    // new location
-    // UpdateAt date (also just "new Date()")
-    // new keywords
-    // everything else stays the same
-
-  // what we need for Get Image
-    // CardId (as a parameter?)
-
-  // what we need for search cards
-    // location
-    // tags (keywordsArray)
-    // firstName (?)
-    // lastName (?)
-      // firstName and lastName should probably also be included in image upload if these are here
-
-    // at least one of these must be provided
-
-
-  // what we need for Edit cards
-    // CardId (passed as a parameter in the endpoint?)
-    // userId
-    // tags
-    // date
-    // location
-    // new image file (?)
-
-
-  // what we need for Delete card
-    // CardId
 
   const [findings, setFindings] = useState<Finding[]>([]);
   const [showUploadForm, setShowUploadForm] = useState(false);
@@ -194,19 +152,21 @@ export default function YourIndex() {
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.heading}>Your Findings</h1>
-      
-      <div style={styles.uploadSection}>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageUpload}
-          style={styles.fileInput}
-          id="image-upload"
-        />
-        <label htmlFor="image-upload" style={styles.uploadButton}>
-          Upload Findings
-        </label>
+      <div style={styles.header}>
+        <h1 style={styles.heading}>Your Findings</h1>
+        
+        <div style={styles.uploadSection}>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            style={styles.fileInput}
+            id="image-upload"
+          />
+          <label htmlFor="image-upload" style={styles.uploadButton}>
+            Upload Findings
+          </label>
+        </div>
       </div>
 
       {showUploadForm && (
@@ -261,12 +221,12 @@ export default function YourIndex() {
               style={{ ...styles.findingImage, objectFit: "cover" as const }}
             />
             <div style={styles.findingDetails}>
-              <p style={styles.detailText}>Location: {finding.location}</p>
+              <p style={styles.detailText}><strong>Location:</strong> {finding.location}</p>
               <p style={styles.detailText}>
-                Date: {finding.date.toLocaleDateString()}
+                <strong>Date:</strong> {finding.date.toLocaleDateString()}
               </p>
               <p style={styles.detailText}>
-                Keywords: {finding.keywords.join(', ')}
+                <strong>Keywords:</strong> {finding.keywords.join(', ')}
               </p>
               <div style={styles.buttonContainer}>
                 <button 
@@ -290,8 +250,8 @@ export default function YourIndex() {
       {showDeleteConfirm && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
-            <h3>Confirm Delete</h3>
-            <p>Are you sure you want to delete this finding?</p>
+            <h3 style={styles.modalTitle}>Confirm Delete</h3>
+            <p style={styles.modalText}>Are you sure you want to delete this finding?</p>
             <div style={styles.modalButtons}>
               <button onClick={handleDeleteConfirm} style={styles.confirmButton}>
                 Yes, Delete
@@ -309,121 +269,166 @@ export default function YourIndex() {
 
 const styles: Styles = {
   container: {
+    display: "flex",
+    flexDirection: "column" as "column",
+    alignItems: "center",
+    width: "100vw",
     minHeight: "100vh",
     backgroundImage: `url(${backgroundImage})`,
     backgroundSize: "cover",
+    backgroundRepeat: "no-repeat",
     backgroundPosition: "center",
-    padding: "20px",
+    paddingBottom: "40px",
+  },
+  header: {
+    width: "100%",
+    display: "flex",
+    flexDirection: "column" as "column",
+    alignItems: "center",
+    padding: "30px 0",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    marginBottom: "30px",
   },
   heading: {
-    fontSize: "40px",
-    color: "white",
+    fontSize: "45px",
+    color: "#fff",
     textAlign: "center" as "center",
-    marginBottom: "30px",
+    marginBottom: "20px",
+    textShadow: "2px 2px 4px rgba(0, 0, 0, 0.7)",
+    fontWeight: "bold",
   },
   uploadSection: {
     display: "flex",
     justifyContent: "center",
-    marginBottom: "30px",
   },
   fileInput: {
     display: "none",
   },
   uploadButton: {
-    padding: "10px 20px",
-    backgroundColor: "yellow",
-    borderRadius: "10px",
+    padding: "12px 30px",
+    backgroundColor: "#1a365d",
+    color: "#ffffff",
+    borderRadius: "30px",
     cursor: "pointer",
-    fontSize: "16px",
+    fontSize: "18px",
     display: "inline-block",
+    fontWeight: "bold",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+    transition: "transform 0.2s, box-shadow 0.2s",
+    border: "2px solid #ffffff",
   },
   formContainer: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    padding: "20px",
+    backgroundColor: "rgba(30, 41, 59, 0.85)",
+    padding: "30px",
     borderRadius: "15px",
-    maxWidth: "500px",
+    maxWidth: "550px",
     margin: "0 auto 30px",
+    width: "90%",
+    boxShadow: "0 6px 16px rgba(0, 0, 0, 0.3)",
+    color: "#ffffff",
   },
   subHeading: {
     marginBottom: "20px",
     textAlign: "center" as "center",
+    fontSize: "28px",
+    fontWeight: "bold",
+    color: "#ffffff",
   },
   form: {
     display: "flex",
     flexDirection: "column" as "column",
-    gap: "15px",
+    gap: "20px",
   },
   inputGroup: {
     display: "flex",
     flexDirection: "column" as "column",
-    gap: "5px",
+    gap: "8px",
   },
   label: {
     fontWeight: "bold",
+    fontSize: "16px",
+    color: "#ffffff",
   },
   input: {
-    padding: "8px",
-    borderRadius: "5px",
-    border: "1px solid #ccc",
+    padding: "12px",
+    borderRadius: "8px",
+    border: "1px solid #3b82f6",
+    fontSize: "16px",
+    backgroundColor: "#ffffff",
+    color: "#333333",
+    fontWeight: "normal",
   },
   datePickerWrapper: {
     width: "100%",
   },
   submitButton: {
-    padding: "10px",
-    backgroundColor: "yellow",
+    padding: "14px",
+    backgroundColor: "#2563eb",
+    color: "white",
     border: "none",
-    borderRadius: "5px",
+    borderRadius: "8px",
     cursor: "pointer",
-    fontSize: "16px",
+    fontSize: "18px",
+    fontWeight: "bold",
+    marginTop: "10px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+    transition: "background-color 0.3s",
   },
   findingsGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-    gap: "20px",
+    gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+    gap: "25px",
     padding: "20px",
+    width: "95%",
+    maxWidth: "1600px",
   },
   findingCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: "10px",
+    backgroundColor: "#ffffff",
+    borderRadius: "12px",
     overflow: "hidden",
-    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    transition: "transform 0.2s, box-shadow 0.2s",
   },
   findingImage: {
     width: "100%",
-    height: "200px",
+    height: "220px",
   },
   findingDetails: {
-    padding: "15px",
+    padding: "20px",
   },
   detailText: {
-    margin: "5px 0",
-    fontSize: "14px",
+    margin: "8px 0",
+    fontSize: "16px",
+    color: "#333",
   },
   buttonContainer: {
     display: "flex",
-    gap: "10px",
-    marginTop: "10px",
+    gap: "12px",
+    marginTop: "15px",
   },
   editButton: {
-    padding: "8px 16px",
-    backgroundColor: "#4285f4",
+    padding: "10px 16px",
+    backgroundColor: "#3b82f6",
     color: "white",
     border: "none",
-    borderRadius: "5px",
+    borderRadius: "8px",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "16px",
     flex: 1,
+    fontWeight: "bold",
+    transition: "background-color 0.3s",
   },
   deleteButton: {
-    padding: "8px 16px",
-    backgroundColor: "#ff4444",
+    padding: "10px 16px",
+    backgroundColor: "#ef4444",
     color: "white",
     border: "none",
-    borderRadius: "5px",
+    borderRadius: "8px",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "16px",
     flex: 1,
+    fontWeight: "bold",
+    transition: "background-color 0.3s",
   },
   modalOverlay: {
     position: "fixed" as "fixed",
@@ -431,44 +436,64 @@ const styles: Styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1000,
   },
   modalContent: {
-    backgroundColor: "white",
-    padding: "20px",
-    borderRadius: "10px",
+    backgroundColor: "#ffffff",
+    padding: "30px",
+    borderRadius: "12px",
     textAlign: "center" as "center",
-    maxWidth: "400px",
+    maxWidth: "450px",
     width: "90%",
+    boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
+  },
+  modalTitle: {
+    fontSize: "24px",
+    fontWeight: "bold",
+    marginBottom: "15px",
+    color: "#1e293b",
+  },
+  modalText: {
+    fontSize: "18px",
+    marginBottom: "20px",
+    color: "#334155",
   },
   modalButtons: {
     display: "flex",
     justifyContent: "center",
-    gap: "10px",
-    marginTop: "20px",
+    gap: "15px",
+    marginTop: "25px",
   },
   confirmButton: {
-    padding: "8px 16px",
-    backgroundColor: "#ff4444",
+    padding: "12px 20px",
+    backgroundColor: "#ef4444",
     color: "white",
     border: "none",
-    borderRadius: "5px",
+    borderRadius: "8px",
     cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: "bold",
+    transition: "background-color 0.3s",
   },
   cancelButton: {
-    padding: "8px 16px",
-    backgroundColor: "#ccc",
-    color: "black",
+    padding: "12px 20px",
+    backgroundColor: "#64748b",
+    color: "white",
     border: "none",
-    borderRadius: "5px",
+    borderRadius: "8px",
     cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: "bold",
+    transition: "background-color 0.3s",
   },
   helperText: {
-    margin: "5px 0",
+    margin: "0",
     fontSize: "14px",
+    color: "#cbd5e1",
+    fontStyle: "italic",
   },
-}; 
+};
