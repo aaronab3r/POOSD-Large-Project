@@ -74,22 +74,34 @@ export default function App() {
     }
 
     try {
+      console.log('Attempting to register...');
       const response = await fetch(buildPath('api/register'), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, email, username, password }),
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ 
+          firstName, 
+          lastName, 
+          login: username,
+          password 
+        }),
       });
 
+      console.log('Registration response status:', response.status);
       const data = await response.json();
+      console.log('Registration response data:', data);
 
       if (response.ok) {
         setMessage(`Registration successful! User ID: ${data.id}`);
         setShowRegister(false);
       } else {
-        setMessage(`Error: ${data.error}`);
+        setMessage(`Error: ${data.error || 'Registration failed'}`);
       }
     } catch (error) {
-      setMessage("Failed to connect to the server.");
+      console.error('Registration error:', error);
+      setMessage("Failed to connect to the server. Please check your connection and try again.");
     }
   };
 
@@ -105,38 +117,58 @@ export default function App() {
     }
 
     try {
+      console.log('Attempting to login...');
       const response = await fetch(buildPath('api/login'), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username, password }),
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ 
+          login: username || email,
+          password 
+        }),
       });
 
+      console.log('Login response status:', response.status);
       const data = await response.json();
-      const { accessToken } = data;
-      const decoded = jwtDecode(accessToken) as JWTPayLoad;
+      console.log('Login response data:', data);
 
-      storeToken(accessToken);
+      if (!response.ok) {
+        setMessage(data.error || 'Login failed');
+        return;
+      }
+
+      const { accessToken } = data;
+      if (!accessToken) {
+        setMessage('No access token received');
+        return;
+      }
 
       try {
-        var ud = decoded;
-        var userId = ud.userId;
-        var firstName = ud.firstName;
-        var lastName = ud.lastName;
+        const decoded = jwtDecode(accessToken) as JWTPayLoad;
+        storeToken(accessToken);
+
+        const ud = decoded;
+        const userId = ud.userId;
+        const firstName = ud.firstName;
+        const lastName = ud.lastName;
 
         if (userId <= 0) {
           setMessage('User/Password combination incorrect');
         } else {
-          var user = {firstName:firstName,lastName:lastName,id:userId};
+          const user = {firstName, lastName, id: userId};
           localStorage.setItem('user_data', JSON.stringify(user));
           setMessage('Login Successful!');
           navigate('/your-index');
         }
       } catch(e: any) {
-        alert(e.toString());
-        return;
+        console.error('Token decoding error:', e);
+        setMessage('Error processing login response');
       }
     } catch (error) {
-      setMessage("Failed to connect to the server.");
+      console.error('Login error:', error);
+      setMessage("Failed to connect to the server. Please check your connection and try again.");
     }
   };
 
