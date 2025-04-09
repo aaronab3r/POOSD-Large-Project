@@ -1,6 +1,17 @@
+require('dotenv');
 require('express');
 require('mongodb');
 token = require('./createJWT.js');
+const multer = require('multer');
+
+// Info for AWS S3
+const AWS = require('aws-sdk');
+const s3 = new AWS.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION
+});
+const bucketName = process.env.S3_BUCKET_NAME;
 
 exports.setApp = function ( app, client )
 {   
@@ -25,7 +36,7 @@ exports.setApp = function ( app, client )
     
         if( results.length > 0 )
         {
-            id = results[0].UserId;
+            id = results[0].UserID;
             fn = results[0].FirstName;
             ln = results[0].LastName;
 
@@ -77,7 +88,7 @@ exports.setApp = function ( app, client )
           const newUser = {
             FirstName: firstName,
             LastName: lastName,
-            UserId: userId,
+            UserID: userId,
             Login: login,
             Password: password, // You should hash this password in production
           };
@@ -92,159 +103,521 @@ exports.setApp = function ( app, client )
         }
     });
 
-    // variables used in the next api endpoints
-    const multer = require('multer');
-    const { GridFsStorage } = require('multer-gridfs-storage');
-    const { MongoClient } = require('mongodb');
-    const GridFSBucket = require('mongodb').GridFSBucket;
+    // Upload new card (outdated)
+    // const multer = require('multer');
+    // const { GridFsStorage } = require('multer-gridfs-storage');
+    // const { MongoClient } = require('mongodb');
+    // const GridFSBucket = require('mongodb').GridFSBucket;
 
     // Configure GridFS storage
-    const storage = new GridFsStorage({
-    url: 'your_mongodb_connection_string',
+    // const storage = new GridFsStorage({
+    // url: 'your_mongodb_connection_string',
 
-    file: (req, file) => {
+    // file: (req, file) => {
 
-        return {
-        bucketName: 'images', // Collection name for images
+    //     return {
+    //     bucketName: 'images', // Collection name for images
 
-        filename: `${Date.now()}-${file.originalname}` // Unique filename
+    //     filename: `${Date.now()}-${file.originalname}` // Unique filename
 
-        };
-    }
+    //     };
+    // }
+    // });
+
+    // const upload = multer({ storage });
+
+    // // Upload new card
+    // app.post('/api/cards', upload.single('image'), async (req, res) => {
+    //     // incoming: userId, tags, date, location, plus file in 'image' field
+    //     // outgoing: cardId, error
+
+    //     const { userId, tags, date, location } = req.body;
+    //     const imageFile = req.file; // This contains the GridFS file info
+
+    //     // Validate required input
+    //     if (!userId || !tags || !date || !location) {
+    //         // If a file was uploaded but other fields are invalid, clean it up
+    //         if (imageFile) {
+    //         const bucket = new GridFSBucket(db, { bucketName: 'images' });
+    //         await bucket.delete(imageFile.id);
+    //         }
+    //         return res.status(400).json({ cardId: -1, error: 'userId is required' });
+    //     }
+
+    //     try {
+    //         // Check if user exists
+    //         const userExists = await db.collection('Users').findOne({ UserID: parseInt(userId) });
+
+    //         if (!userExists) {
+    //         // Clean up uploaded file if user doesn't exist
+    //         if (imageFile) {
+    //             const bucket = new GridFSBucket(db, { bucketName: 'images' });
+    //             await bucket.delete(imageFile.id);
+    //         }
+    //         return res.status(404).json({ cardId: -1, error: 'User not found' });
+    //         }
+
+    //         const cardId = Math.floor(Math.random() * 10000000);
+
+    //         const newCard = {
+    //         CardID: cardId,
+    //         UserID: parseInt(userId),
+    //         Tags: tags ? tags.split(',').map(tag => tag.trim()) : [], // Assuming tags come as comma-separated string
+    //         // ^ this line was giving errors
+    //         Location: location,
+    //         Date: date,
+    //         ImageId: imageFile ? imageFile.id : null, // Store GridFS file ID
+    //         CreatedAt: new Date(),
+    //         UpdatedAt: new Date(),
+    //         Likes: 0,
+    //         Comments: []
+    //         };
+
+    //         await db.collection('Cards').insertOne(newCard);
+    //         console.log('Card saved with ID:', cardId);
+
+    //         res.status(200).json({ 
+    //         cardId, 
+    //         error: '',
+    //         imageId: imageFile ? imageFile.id : null
+    //         });
+    //     } catch (e) {
+    //         console.error('Card creation error:', e);
+    //         // Clean up any uploaded file if error occurs
+    //         if (req.file) {
+    //         const bucket = new GridFSBucket(db, { bucketName: 'images' });
+    //         await bucket.delete(req.file.id).catch(cleanupError => {
+    //             console.error('Failed to cleanup image:', cleanupError);
+    //         });
+    //         }
+    //         res.status(500).json({ cardId: -1, error: e.toString() });
+    //     }
+    // });
+
+
+    // Verify an image was uploaded
+    const upload = multer({
+        storage: multer.memoryStorage(),
+        fileFilter: (req, file, cb) => {
+            if (file.mimetype.startsWith('image/')) {
+                cb(null, true);
+            } else {
+                cb(new Error('Only image files are allowed!'), false);
+            }
+        }
     });
-
-    const upload = multer({ storage });
-
-    // Upload new card
+    
+    // Upload Card
     app.post('/api/cards', upload.single('image'), async (req, res) => {
-        // incoming: userId, tags, date, location, plus file in 'image' field
-        // outgoing: cardId, error
-
         const { userId, tags, date, location } = req.body;
-        const imageFile = req.file; // This contains the GridFS file info
-
-        // Validate required input
-        if (!userId || !tags || !date || !location) {
-            // If a file was uploaded but other fields are invalid, clean it up
-            if (imageFile) {
-            const bucket = new GridFSBucket(db, { bucketName: 'images' });
-            await bucket.delete(imageFile.id);
-            }
-            return res.status(400).json({ cardId: -1, error: 'userId is required' });
+        const imageFile = req.file;
+        const db = client.db('Test');
+        
+        if (!userId || !date || !location) {
+            return res.status(400).json({ cardId: -1, error: 'Missing required fields' });
         }
-
+        
         try {
-            // Check if user exists
             const userExists = await db.collection('Users').findOne({ UserID: parseInt(userId) });
-
+        
             if (!userExists) {
-            // Clean up uploaded file if user doesn't exist
+                return res.status(404).json({ cardId: -1, error: 'User not found' });
+            }
+        
+            let imageUrl = null;
             if (imageFile) {
-                const bucket = new GridFSBucket(db, { bucketName: 'images' });
-                await bucket.delete(imageFile.id);
+                const params = {
+                    Bucket: bucketName,
+                    Key: `images/${Date.now()}_${imageFile.originalname}`,
+                    Body: imageFile.buffer,
+                    ContentType: imageFile.mimetype,
+                    ACL: 'public-read'
+                };
+            
+                const uploadResult = await s3.upload(params).promise();
+                imageUrl = uploadResult.Location;
             }
-            return res.status(404).json({ cardId: -1, error: 'User not found' });
-            }
-
+        
             const cardId = Math.floor(Math.random() * 10000000);
-
+        
             const newCard = {
-            CardID: cardId,
-            UserID: parseInt(userId),
-            Tags: tags ? tags.split(',').map(tag => tag.trim()) : [], // Assuming tags come as comma-separated string
-            // ^ this line was giving errors
-            Location: location,
-            Date: date,
-            ImageId: imageFile ? imageFile.id : null, // Store GridFS file ID
-            CreatedAt: new Date(),
-            UpdatedAt: new Date(),
-            Likes: 0,
-            Comments: []
+                CardID: cardId,
+                UserID: parseInt(userId),
+                Tags: tags ? tags.split(',').map(t => t.trim()) : [],
+                Location: location,
+                Date: date,
+                ImageUrl: imageUrl,
+                CreatedAt: new Date(),
+                UpdatedAt: new Date(),
+                Likes: 0,
+                Comments: []
             };
-
+        
             await db.collection('Cards').insertOne(newCard);
-            console.log('Card saved with ID:', cardId);
-
+        
             res.status(200).json({ 
-            cardId, 
-            error: '',
-            imageId: imageFile ? imageFile.id : null
+                cardId, 
+                error: '',
+                imageUrl: imageUrl
             });
         } catch (e) {
-            console.error('Card creation error:', e);
-            // Clean up any uploaded file if error occurs
-            if (req.file) {
-            const bucket = new GridFSBucket(db, { bucketName: 'images' });
-            await bucket.delete(req.file.id).catch(cleanupError => {
-                console.error('Failed to cleanup image:', cleanupError);
-            });
-            }
-            res.status(500).json({ cardId: -1, error: e.toString() });
+            console.error('Error:', e);
+            res.status(500).json({ cardId: -1, error: 'Internal server error' });
         }
+      
     });
 
-    // Get Card
-    app.get('/api/images/:id', async (req, res) => {
-        try {
-          const bucket = new GridFSBucket(db, { bucketName: 'images' });
-          const downloadStream = bucket.openDownloadStream(new ObjectId(req.params.id));
+    // Get Card (image actually, plus outdated)
+    // app.get('/api/images/:id', async (req, res) => {
+    //     try {
+    //       const bucket = new GridFSBucket(db, { bucketName: 'images' });
+    //       const downloadStream = bucket.openDownloadStream(new ObjectId(req.params.id));
           
-          downloadStream.on('error', () => {
+    //       downloadStream.on('error', () => {
+    //         return res.status(404).send('Image not found');
+    //       });
+      
+    //       // Set appropriate content type
+    //       downloadStream.on('file', (file) => {
+    //         res.set('Content-Type', file.contentType);
+    //       });
+      
+    //       downloadStream.pipe(res);
+    //     } catch (e) {
+    //       console.error('Image retrieval error:', e);
+    //       res.status(500).send('Error retrieving image');
+    //     }
+    // });
+
+
+    // Get Image
+    app.get('/api/images/:id', async (req, res) => {
+        const db = client.db('Test');
+        try {
+          const card = await db.collection('Cards').findOne({ CardID: parseInt(req.params.id) });
+      
+          if (!card || !card.ImageUrl) {
             return res.status(404).send('Image not found');
-          });
+          }
       
-          // Set appropriate content type
-          downloadStream.on('file', (file) => {
-            res.set('Content-Type', file.contentType);
-          });
-      
-          downloadStream.pipe(res);
+          res.status(200).json({ imageUrl: card.ImageUrl });
         } catch (e) {
-          console.error('Image retrieval error:', e);
+          console.error('Error:', e);
           res.status(500).send('Error retrieving image');
         }
     });
 
-    // Search card
+    // Search card (outdated)
+    // app.get('/api/cards/search', async (req, res) => {
+    //     try {
+    //         const { location, tags } = req.query;
+      
+    //         if (!location && !tags) {
+    //             return res.status(400).json({ error: 'At least one search parameter (location or tags) is required' });
+    //         }
+        
+    //         const query = {};
+        
+    //         if (location) {
+    //             query.Location = { $regex: location, $options: 'i' };
+    //         }
+        
+    //         if (tags) {
+    //             const tagArray = tags.split(',').map(tag => tag.trim());
+    //             query.Tags = { $in: tagArray };
+    //         }
+        
+    //         const cards = await db.collection('Cards')
+    //             .find(query)
+    //             .toArray();
+        
+    //         if (cards.length === 0) {
+    //             let message = 'No cards found';
+    //             if (location && tags) {
+    //             message = 'No cards found matching both the location and tags';
+    //             } else if (location) {
+    //             message = 'No cards found matching the location';
+    //             } else {
+    //             message = 'No cards found with the specified tags';
+    //             }
+    //             return res.status(200).json({ message });
+    //         }
+        
+    //         res.status(200).json(cards);
+    //     } catch (e) {
+    //       console.error('Combined search error:', e);
+    //       res.status(500).json({ error: e.toString() });
+    //     }
+    // });
+
+
+    // Search Card
     app.get('/api/cards/search', async (req, res) => {
         try {
-            const { location, tags } = req.query;
+          const { location, tags, firstName, lastName } = req.query;
+          const db = client.db('Test');
       
-            if (!location && !tags) {
-                return res.status(400).json({ error: 'At least one search parameter (location or tags) is required' });
+          // Validate at least one search parameter is provided
+          if (!location && !tags && !firstName && !lastName) {
+            return res.status(400).json({ 
+              error: 'Please provide at least one search parameter (location, tags, firstName, or lastName)' 
+            });
+          }
+      
+          // Step 1: If searching by user names, first find matching users
+          let userIds = [];
+          if (firstName || lastName) {
+            const userQuery = {};
+            if (firstName) userQuery.FirstName = { $regex: firstName, $options: 'i' };
+            if (lastName) userQuery.LastName = { $regex: lastName, $options: 'i' };
+      
+            const matchingUsers = await db.collection('Users')
+              .find(userQuery)
+              .project({ UserID: 1 })
+              .toArray();
+      
+            userIds = matchingUsers.map(user => user.UserID);
+      
+            // If no users found and we were specifically searching by name
+            if (userIds.length === 0 && (firstName || lastName)) {
+              return res.status(200).json({ 
+                message: 'No cards found matching the user name criteria',
+                cards: []
+              });
             }
-        
-            const query = {};
-        
-            if (location) {
-                query.Location = { $regex: location, $options: 'i' };
-            }
-        
-            if (tags) {
-                const tagArray = tags.split(',').map(tag => tag.trim());
-                query.Tags = { $in: tagArray };
-            }
-        
-            const cards = await db.collection('Cards')
-                .find(query)
-                .toArray();
-        
-            if (cards.length === 0) {
-                let message = 'No cards found';
-                if (location && tags) {
-                message = 'No cards found matching both the location and tags';
-                } else if (location) {
-                message = 'No cards found matching the location';
-                } else {
-                message = 'No cards found with the specified tags';
-                }
-                return res.status(200).json({ message });
-            }
-        
-            res.status(200).json(cards);
+          }
+      
+          // Step 2: Build the card query
+          const cardQuery = {};
+      
+          if (location) {
+            cardQuery.Location = { $regex: location, $options: 'i' };
+          }
+      
+          if (tags) {
+            const tagArray = tags.split(',').map(tag => tag.trim());
+            cardQuery.Tags = { $in: tagArray };
+          }
+      
+          // If we have userIds from name search, add to query
+          if (userIds.length > 0) {
+            cardQuery.UserID = { $in: userIds };
+          } else if (firstName || lastName) {
+            // If we searched by name but found no users, return empty
+            return res.status(200).json({ 
+              message: 'No cards found matching the user name criteria',
+              cards: []
+            });
+          }
+      
+          // Step 3: Find matching cards and include user information
+          const cards = await db.collection('Cards')
+            .find(cardQuery)
+            .toArray();
+      
+          // If we want to include user information in the response
+          if (cards.length > 0) {
+            const cardUserIds = [...new Set(cards.map(card => card.UserID))];
+            const users = await db.collection('Users')
+              .find({ UserID: { $in: cardUserIds } })
+              .project({ UserID: 1, FirstName: 1, LastName: 1 })
+              .toArray();
+      
+            const userMap = users.reduce((map, user) => {
+              map[user.UserID] = user;
+              return map;
+            }, {});
+      
+            const cardsWithUserInfo = cards.map(card => ({
+              ...card,
+              user: {
+                firstName: userMap[card.UserID]?.FirstName || '',
+                lastName: userMap[card.UserID]?.LastName || ''
+              }
+            }));
+      
+            return res.status(200).json(cardsWithUserInfo);
+          }
+      
+          res.status(200).json({ 
+            message: 'No cards found matching your criteria',
+            cards: []
+          });
         } catch (e) {
-          console.error('Combined search error:', e);
-          res.status(500).json({ error: e.toString() });
+          console.error('Search error:', e);
+          res.status(500).json({ error: 'Internal server error' });
+        }  
+    });
+
+
+    // Edit Card (this is the exact same thing thats in Upload Card's area)
+    // const upload = multer({
+    //     storage: multer.memoryStorage(),
+    //     fileFilter: (req, file, cb) => {
+    //         if (file.mimetype.startsWith('image/')) {
+    //             cb(null, true);
+    //         } else {
+    //             cb(new Error('Only image files are allowed!'), false);
+    //         }
+    //     }
+    //  });
+    
+    // Edit Card
+    app.put('/api/cards/:cardId', upload.single('image'), async (req, res) => {
+        const { cardId } = req.params;
+        const { userId, tags, date, location } = req.body;
+        const newImageFile = req.file;
+        const db = client.db('Test');
+        
+        // Validate cardId
+        if (!cardId || isNaN(cardId)) {
+            return res.status(400).json({ 
+            success: false,
+            error: 'Invalid card ID' 
+            });
         }
+        
+        try {
+            // 1. Find the existing card
+            const existingCard = await db.collection('Cards').findOne({ 
+            CardID: parseInt(cardId) 
+            });
+        
+            if (!existingCard) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Card not found' 
+            });
+            }
+        
+            // 2. Verify user owns the card (optional security check)
+            if (existingCard.UserID !== parseInt(userId)) {
+            return res.status(403).json({ 
+                success: false,
+                error: 'Unauthorized to edit this card' 
+            });
+            }
+        
+            let imageUrl = existingCard.ImageUrl;
+            let oldImageKey = null;
+        
+            // 3. Handle image update if new image was uploaded
+            if (newImageFile) {
+            // Prepare to delete old image later
+            if (existingCard.ImageUrl) {
+                oldImageKey = existingCard.ImageUrl.split('/').pop();
+            }
+        
+            // Upload new image to S3
+            const params = {
+                Bucket: bucketName,
+                Key: `images/${Date.now()}_${newImageFile.originalname}`,
+                Body: newImageFile.buffer,
+                ContentType: newImageFile.mimetype
+            };
+        
+            const uploadResult = await s3.upload(params).promise();
+            imageUrl = uploadResult.Location;
+            }
+        
+            // 4. Update card in database
+            const updateData = {
+            ...existingCard,
+            Tags: tags ? tags.split(',').map(t => t.trim()) : existingCard.Tags,
+            Location: location || existingCard.Location,
+            Date: date || existingCard.Date,
+            ImageUrl: imageUrl,
+            UpdatedAt: new Date()
+            };
+        
+            await db.collection('Cards').updateOne(
+            { CardID: parseInt(cardId) },
+            { $set: updateData }
+            );
+        
+            // 5. Delete old image from S3 if it was replaced
+            if (oldImageKey) {
+            try {
+                await s3.deleteObject({
+                Bucket: bucketName,
+                Key: `images/${oldImageKey}`
+                }).promise();
+            } catch (err) {
+                console.error('Failed to delete old image from S3:', err);
+                // Not critical - can be cleaned up later
+            }
+            }
+        
+            res.status(200).json({ 
+            success: true,
+            cardId: parseInt(cardId),
+            imageUrl: imageUrl
+            });
+        
+        } catch (err) {
+            console.error('Edit card error:', err);
+            res.status(500).json({ 
+            success: false,
+            error: 'Internal server error' 
+            });
+        }  
+    });
+
+
+    // Delete Card
+    app.delete('/api/cards/:cardId', async (req, res) => {
+        const { cardId } = req.params;
+        const db = client.db('Test');
+      
+        if (!cardId || isNaN(cardId)) {
+            return res.status(400).json({ 
+                success: false,
+                error: 'Invalid card ID' 
+            });
+        }
+      
+        try {
+            const card = await db.collection('Cards').findOne({ 
+                CardID: parseInt(cardId) 
+            });
+      
+            if (!card) {
+                return res.status(404).json({ 
+                    success: false,
+                    error: 'Card not found' 
+                });
+            }
+      
+            // Delete associated image from S3 if exists
+            if (card.ImageUrl) {
+                try {
+                    const key = card.ImageUrl.split('/').pop();
+                    await s3.deleteObject({
+                        Bucket: bucketName,
+                        Key: `images/${key}`
+                    }).promise();
+                } catch (err) {
+                    console.error('Failed to delete image from S3:', err);
+                    // Continue even if image deletion fails
+                }
+            }
+      
+            // Delete the card document
+            await db.collection('Cards').deleteOne({ 
+                CardID: parseInt(cardId) 
+            });
+      
+            res.json({ 
+                success: true,
+                message: 'Card deleted successfully'
+             });
+      
+        } catch (err) {
+            console.error('Delete error:', err);
+            res.status(500).json({ 
+                success: false,
+                error: 'Server error during deletion' 
+            });
+        }  
     });
 }

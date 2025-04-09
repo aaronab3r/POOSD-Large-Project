@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import backgroundImage from "./images/background.jpg";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -6,6 +6,8 @@ import "./styles/YourIndex.css";
 import { retrieveToken, storeToken } from "../tokenStorage";
 import { jwtDecode } from "jwt-decode";
 import { JWTPayLoad } from "./interfaces/interfaces";
+import { buildPath } from "../components/Path";
+import { useNavigate } from "react-router-dom";
 
 interface Finding {
   id: number;
@@ -49,24 +51,26 @@ interface Styles {
 }
 
 export default function YourIndex() {
-
   // Load the JWT to get the UserID
   // If we cannot load a JWT then the user is not logged in, and shouldn't be able to view this site
-  var userId = -1
-  try{
-    const jwtToken = retrieveToken() as any;
-
-    const decoded = jwtDecode(jwtToken) as JWTPayLoad;
-    storeToken(jwtToken);
-
-    userId = decoded.userId;
-  }
-  catch(e: any)
-  {
-    alert(e.toString() )
-    return; // exit the page
-    // might be a better idea to print out an error, then send the user back to the login page
-  }
+  const [userId, setUserId] = useState<number>(-1);
+  const [firstName, setFirstName] = useState<string>('');
+  // ^ this exists only for line 93 to get the logged in user's cards shown
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    try {
+      const jwtToken = retrieveToken() as any;
+      const decoded = jwtDecode(jwtToken) as JWTPayLoad;
+      storeToken(jwtToken);
+      setUserId(decoded.userId);
+      setFirstName(decoded.firstName);
+    } catch (e: any) {
+      alert("Please log in to view this page");
+      // Redirect to login page
+      navigate('/');
+    }
+  }, []);
 
   const [findings, setFindings] = useState<Finding[]>([]);
   const [showUploadForm, setShowUploadForm] = useState(false);
@@ -78,6 +82,193 @@ export default function YourIndex() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [findingToDelete, setFindingToDelete] = useState<number | null>(null);
   const [editingFinding, setEditingFinding] = useState<Finding | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch user's findings when component mounts
+  useEffect(() => {
+    async function fetchUserFindings() {
+      if (userId === -1) return;
+      
+      setIsLoading(true);
+      try {
+        const response = await fetch(buildPath(`api/cards/search?firstName=${firstName}`), {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+          const formattedFindings: Finding[] = data.map(card => ({
+            id: card.CardID,
+            imageUrl: card.ImageUrl,
+            location: card.Location,
+            date: new Date(card.Date),
+            keywords: card.Tags
+          }));
+          
+          setFindings(formattedFindings.sort((a, b) => b.date.getTime() - a.date.getTime()));
+        }
+      } catch (error) {
+        console.error("Error fetching findings:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    if (userId !== -1) {
+      fetchUserFindings();
+    }
+  }, [userId]);
+
+  async function addCard(e: React.FormEvent<HTMLElement>): Promise<void> {
+    e.preventDefault();
+
+    if (!selectedImage || !location || !date) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    setIsLoading(true);
+    const formData = new FormData();
+    formData.append('image', selectedImage);
+    formData.append('userId', userId.toString());
+    formData.append('tags', keywords);
+    formData.append('date', date.toISOString());
+    formData.append('location', location);
+
+    try {
+      const response = await fetch(buildPath('api/cards'), {
+        method: 'POST',
+        body: formData,
+        // Note: Don't set Content-Type header - browser will set it with boundary for FormData
+      });
+
+      const result = await response.json();
+      
+      if (result.error) {
+        alert("Error: " + result.error);
+      } else {
+        // Add the new card to the findings state with the returned image URL
+        const newFinding: Finding = {
+          id: result.cardId,
+          imageUrl: result.imageUrl,
+          location,
+          date: date || new Date(),
+          keywords: keywords.split(',').map(keyword => keyword.trim())
+        };
+        
+        setFindings(prevFindings => 
+          [...prevFindings, newFinding].sort((a, b) => b.date.getTime() - a.date.getTime())
+        );
+        
+        // Reset the form
+        setShowUploadForm(false);
+        setSelectedImage(null);
+        setLocation("");
+        setDate(new Date());
+        setPreviewUrl(null);
+        setKeywords("");
+      }
+    } catch (error: unknown) {
+      alert("Error submitting finding: " + (error instanceof Error ? error.toString() : String(error)));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleEditSubmit(): Promise<void> {
+    if (!location || !date || !keywords) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    if (!editingFinding) {
+      alert("No finding selected for editing");
+      return;
+    }
+
+    setIsLoading(true);
+    const formData = new FormData();
+    if (selectedImage) {
+      formData.append('image', selectedImage);
+    }
+    
+    formData.append('userId', userId.toString());
+    formData.append('tags', keywords);
+    formData.append('date', date.toISOString());
+    formData.append('location', location);
+
+    try {
+      const response = await fetch(buildPath(`api/cards/${editingFinding.id}`), {
+        method: 'PUT',
+        body: formData
+      });
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        alert("Error updating finding: " + result.error);
+      } else {
+        // Update the finding in state
+        const updatedFinding: Finding = {
+          id: editingFinding.id,
+          imageUrl: result.imageUrl || editingFinding.imageUrl,
+          location,
+          date: date || new Date(),
+          keywords: keywords.split(',').map(keyword => keyword.trim())
+        };
+        
+        setFindings(prevFindings => 
+          prevFindings.map(finding => 
+            finding.id === editingFinding.id ? updatedFinding : finding
+          ).sort((a, b) => b.date.getTime() - a.date.getTime())
+        );
+        
+        // Reset form
+        setEditingFinding(null);
+        setShowUploadForm(false);
+        setSelectedImage(null);
+        setLocation("");
+        setDate(new Date());
+        setPreviewUrl(null);
+        setKeywords("");
+      }
+    } catch (error) {
+      alert("Error updating finding: " + String(error));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleDeleteConfirm(): Promise<void> {
+    if (findingToDelete === null) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(buildPath(`api/cards/${findingToDelete}`), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setFindings(prevFindings => 
+          prevFindings.filter(finding => finding.id !== findingToDelete)
+        );
+      } else {
+        alert("Error deleting finding: " + result.error);
+      }
+      
+      setShowDeleteConfirm(false);
+      setFindingToDelete(null);
+    } catch (error) {
+      alert("Error deleting finding: " + String(error));
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -89,36 +280,10 @@ export default function YourIndex() {
   };
 
   const handleSubmit = () => {
-    if (location && date && keywords) {
-      const keywordsArray = keywords.split(',').map(keyword => keyword.trim());
-      const newFinding: Finding = {
-        id: editingFinding ? editingFinding.id : findings.length + 1,
-        imageUrl: editingFinding ? editingFinding.imageUrl : previewUrl!,
-        location,
-        date,
-        keywords: keywordsArray,
-      };
-
-      if (editingFinding) {
-        setFindings(prevFindings => 
-          prevFindings.map(finding => 
-            finding.id === editingFinding.id ? newFinding : finding
-          ).sort((a, b) => b.date.getTime() - a.date.getTime())
-        );
-        setEditingFinding(null);
-      } else {
-        if (!selectedImage) return; // Only require image for new findings
-        setFindings(prevFindings => 
-          [...prevFindings, newFinding].sort((a, b) => b.date.getTime() - a.date.getTime())
-        );
-      }
-
-      setShowUploadForm(false);
-      setSelectedImage(null);
-      setLocation("");
-      setDate(new Date());
-      setPreviewUrl(null);
-      setKeywords("");
+    if (editingFinding) {
+      handleEditSubmit();
+    } else {
+      addCard(new Event('submit') as unknown as React.FormEvent<HTMLElement>);
     }
   };
 
@@ -127,6 +292,7 @@ export default function YourIndex() {
     setLocation(finding.location);
     setDate(finding.date);
     setKeywords(finding.keywords.join(', '));
+    setPreviewUrl(finding.imageUrl);
     setShowUploadForm(true);
   };
 
@@ -135,20 +301,14 @@ export default function YourIndex() {
     setShowDeleteConfirm(true);
   };
 
-  const handleDeleteConfirm = () => {
-    if (findingToDelete !== null) {
-      setFindings(prevFindings => 
-        prevFindings.filter(finding => finding.id !== findingToDelete)
-      );
-      setShowDeleteConfirm(false);
-      setFindingToDelete(null);
-    }
-  };
-
   const handleDeleteCancel = () => {
     setShowDeleteConfirm(false);
     setFindingToDelete(null);
   };
+
+  if (userId === -1) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div style={styles.container}>
@@ -171,7 +331,26 @@ export default function YourIndex() {
 
       {showUploadForm && (
         <div style={styles.formContainer}>
-          <h2 style={styles.subHeading}>Add Details</h2>
+          <h2 style={styles.subHeading}>
+            {editingFinding ? "Edit Finding" : "Add Details"}
+          </h2>
+          
+          {previewUrl && (
+            <div style={{ marginBottom: "20px", textAlign: "center" }}>
+              <img 
+                src={previewUrl} 
+                alt="Preview" 
+                style={{ 
+                  maxWidth: "100%", 
+                  maxHeight: "200px", 
+                  objectFit: "contain",
+                  borderRadius: "8px",
+                  border: "2px solid #3b82f6"
+                }} 
+              />
+            </div>
+          )}
+          
           <div style={styles.form}>
             <div style={styles.inputGroup}>
               <label style={styles.label}>Location:</label>
@@ -205,46 +384,74 @@ export default function YourIndex() {
               />
               <p style={styles.helperText}>Separate keywords with commas</p>
             </div>
-            <button onClick={handleSubmit} style={styles.submitButton}>
-              Save Finding
+            <button 
+              onClick={handleSubmit} 
+              style={{
+                ...styles.submitButton,
+                opacity: isLoading ? 0.7 : 1,
+                cursor: isLoading ? "not-allowed" : "pointer"
+              }}
+              disabled={isLoading}
+            >
+              {isLoading ? "Processing..." : editingFinding ? "Update Finding" : "Save Finding"}
             </button>
           </div>
         </div>
       )}
 
+      {isLoading && !showUploadForm && (
+        <div style={{ textAlign: "center", padding: "20px", color: "#ffffff" }}>
+          Loading your findings...
+        </div>
+      )}
+
       <div style={styles.findingsGrid}>
-        {findings.map((finding) => (
-          <div key={finding.id} style={styles.findingCard}>
-            <img
-              src={finding.imageUrl}
-              alt={`Finding ${finding.id}`}
-              style={{ ...styles.findingImage, objectFit: "cover" as const }}
-            />
-            <div style={styles.findingDetails}>
-              <p style={styles.detailText}><strong>Location:</strong> {finding.location}</p>
-              <p style={styles.detailText}>
-                <strong>Date:</strong> {finding.date.toLocaleDateString()}
-              </p>
-              <p style={styles.detailText}>
-                <strong>Keywords:</strong> {finding.keywords.join(', ')}
-              </p>
-              <div style={styles.buttonContainer}>
-                <button 
-                  onClick={() => handleEditClick(finding)}
-                  style={styles.editButton}
-                >
-                  Edit
-                </button>
-                <button 
-                  onClick={() => handleDeleteClick(finding.id)}
-                  style={styles.deleteButton}
-                >
-                  Delete
-                </button>
+        {findings.length === 0 && !isLoading ? (
+          <div style={{ 
+            gridColumn: "1 / -1", 
+            textAlign: "center", 
+            padding: "40px", 
+            backgroundColor: "rgba(255, 255, 255, 0.8)",
+            borderRadius: "10px"
+          }}>
+            <p>You haven't uploaded any findings yet. Use the "Upload Findings" button to get started!</p>
+          </div>
+        ) : (
+          findings.map((finding) => (
+            <div key={finding.id} style={styles.findingCard}>
+              <img
+                src={finding.imageUrl}
+                alt={`Finding ${finding.id}`}
+                style={{ ...styles.findingImage, objectFit: "cover" as const }}
+              />
+              <div style={styles.findingDetails}>
+                <p style={styles.detailText}><strong>Location:</strong> {finding.location}</p>
+                <p style={styles.detailText}>
+                  <strong>Date:</strong> {finding.date.toLocaleDateString()}
+                </p>
+                <p style={styles.detailText}>
+                  <strong>Keywords:</strong> {finding.keywords.join(', ')}
+                </p>
+                <div style={styles.buttonContainer}>
+                  <button 
+                    onClick={() => handleEditClick(finding)}
+                    style={styles.editButton}
+                    disabled={isLoading}
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteClick(finding.id)}
+                    style={styles.deleteButton}
+                    disabled={isLoading}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {showDeleteConfirm && (
@@ -253,10 +460,18 @@ export default function YourIndex() {
             <h3 style={styles.modalTitle}>Confirm Delete</h3>
             <p style={styles.modalText}>Are you sure you want to delete this finding?</p>
             <div style={styles.modalButtons}>
-              <button onClick={handleDeleteConfirm} style={styles.confirmButton}>
-                Yes, Delete
+              <button 
+                onClick={handleDeleteConfirm} 
+                style={styles.confirmButton}
+                disabled={isLoading}
+              >
+                {isLoading ? "Deleting..." : "Yes, Delete"}
               </button>
-              <button onClick={handleDeleteCancel} style={styles.cancelButton}>
+              <button 
+                onClick={handleDeleteCancel} 
+                style={styles.cancelButton}
+                disabled={isLoading}
+              >
                 Cancel
               </button>
             </div>
