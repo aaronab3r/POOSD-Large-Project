@@ -15,7 +15,7 @@ interface JWTPayLoad {
   lastName: string;
 }
 
-export default function App() {
+export default function WelcomePage() {
   const [showAuth, setShowAuth] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -49,6 +49,65 @@ export default function App() {
 
   const validateEmail = (email: string) => {
     return email.includes('@');
+  };
+
+  const requestVerificationEmail = async (userId: number) => {
+    try {
+      const response = await fetch(buildPath('email/sendverification'), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ userId })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMessage("Verification email sent! Please check your inbox.");
+      } else {
+        setMessage(`Error: ${data.error || 'Failed to send verification email'}`);
+      }
+    } catch (error) {
+      console.error('Verification email request error:', error);
+      setMessage("Failed to connect to the server. Please check your connection and try again.");
+    }
+  };
+
+
+  const requestPasswordReset = async () => {
+    if (!email) {
+      setMessage("Please enter your email address");
+      return;
+    }
+  
+    if (!validateEmail(email)) {
+      setMessage("Please enter a valid email address!");
+      return;
+    }
+  
+    try {
+      const response = await fetch(buildPath('email/passwordreset'), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ Email: email })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMessage("Password reset email sent! Please check your inbox for the code.");
+        // Optionally redirect to a password reset code entry page
+        navigate('/reset-password');
+      } else {
+        setMessage(`Error: ${data.error || 'Failed to send password reset email'}`);
+      }
+    } catch (error) {
+      console.error('Password reset request error:', error);
+      setMessage("Failed to connect to the server. Please check your connection and try again.");
+    }
   };
 
   const handleRegister = async () => {
@@ -85,7 +144,8 @@ export default function App() {
           firstName, 
           lastName, 
           login: username,
-          password 
+          password,
+          email
         }),
       });
 
@@ -95,6 +155,8 @@ export default function App() {
 
       if (response.ok) {
         setMessage(`Registration successful! User ID: ${data.id}`);
+        // Request verification email
+        await requestVerificationEmail(data.id);
         setShowRegister(false);
       } else {
         setMessage(`Error: ${data.error || 'Registration failed'}`);
@@ -297,7 +359,10 @@ export default function App() {
 
               {!showRegister && (
                 <div style={styles.forgotPassword}>
-                  <button style={styles.forgotPasswordButton}>
+                  <button 
+                    style={styles.forgotPasswordButton}
+                    onClick={requestPasswordReset}
+                  >
                     Forgot Password?
                   </button>
                 </div>

@@ -67,15 +67,17 @@ exports.setApp = function ( app, client )
             // you can put whatever you want into a JWT
     });
     
+
+
     // Register new user
     app.post('/api/register', async (req, res) => {
         // incoming: firstName, lastName, login, password
         // outgoing: id, error
       
-        const { firstName, lastName, login, password } = req.body;
+        const { firstName, lastName, login, password, email } = req.body;
       
         // Validate input
-        if (!firstName || !lastName || !login || !password) {
+        if (!firstName || !lastName || !login || !password || !email) {
           const error = 'All fields are required';
           return res.status(400).json({ id: -1, error });
         }
@@ -98,6 +100,8 @@ exports.setApp = function ( app, client )
             UserID: userId,
             Login: login,
             Password: password, // You should hash this password in production
+            Email: email,
+            Verified: false,
           };
       
           const result = await db.collection('Users').insertOne(newUser);
@@ -109,6 +113,8 @@ exports.setApp = function ( app, client )
           res.status(500).json({ id: -1, error: e.toString() });
         }
     });
+
+
 
     // Security middleware
     app.use(helmet());
@@ -124,8 +130,10 @@ exports.setApp = function ( app, client )
       message: 'Too many requests from this IP, please try again later'
     });
 
+
+
     // Database connection with your MongoDB URI
-    const url = process.env.MONGODB_URI;
+    // const url = process.env.MONGODB_URI;
     // const client = new mongoose.MongoClient(url, {
     //   useNewUrlParser: true,
     //   useUnifiedTopology: true,
@@ -133,7 +141,7 @@ exports.setApp = function ( app, client )
     //   serverSelectionTimeoutMS: 5000
     // });
 
-    let db;
+    // let db;
     // client.connect()
     //   .then(() => {
     //     console.log("MongoDB connected successfully");
@@ -158,13 +166,15 @@ exports.setApp = function ( app, client )
       const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       const token = Array.from({length}, () => 
         characters.charAt(Math.floor(Math.random() * characters.length))
-        .join(''));
+      ).join('');
 
       return {
         token,
         expiresAt: new Date(Date.now() + expiresInMinutes * 60000)
       };
     }
+
+
 
     // Enhanced email sender
     async function sendEmail(user, subject, message) {
@@ -181,16 +191,20 @@ exports.setApp = function ( app, client )
       return transporter.sendMail(mailOptions);
     }
 
+
+
     // Email verification endpoint
     app.post('/email/sendverification', emailLimiter, async (req, res) => {
       const { userId } = req.body;
+
+      const db = client.db('Test');
 
       try {
         if (!userId) {
           return res.status(400).json({ success: false, error: 'User ID is required' });
         }
 
-        const user = await User.getUserInfo(userId);
+        const user = await getUserInfo(userId);
         if (!user) {
           return res.status(404).json({ success: false, error: 'User not found' });
         }
@@ -202,14 +216,14 @@ exports.setApp = function ( app, client )
         const { token, expiresAt } = makeToken(20);
 
         await db.collection('Users').updateOne(
-          { "_id": new mongoose.Types.ObjectId(userId) },
+          { "UserID": userId },
           { $set: { 
             "VerKey": token,
             "VerKeyExpires": expiresAt 
           }}
         );
 
-        const verificationUrl = `${process.env.BASE_URL || 'https://yourbackend.com'}/email/verify/${user._id}/${token}`;
+        const verificationUrl = `${process.env.BASE_URL || 'http://localhost:5001'}/email/verify/${user.UserID}/${token}`;
         const message = `Please click the following link to verify your email address:\n${verificationUrl}\n\nThis link will expire in 30 minutes.`;
 
         await sendEmail(user, "Email Verification", message);
@@ -221,9 +235,38 @@ exports.setApp = function ( app, client )
       }
     });
 
+
+
+    getUserInfo = async function ( userId ) {
+      var error = '';
+  
+      try {
+          const db = client.db("Test");
+          const results = await db.collection('Users').find({"UserID":userId}).toArray();
+  
+          var _ret = [];
+          for( var i=0; i<results.length; i++ )
+          {
+              _ret.push( results[i]);
+          }
+  
+          if (results.length != 1) {
+              throw new Error('UserId Invalid');
+          }
+          return _ret[0];
+      } catch(e) {
+          console.log("Error: '" + e + "' in getUserInfo()");
+          return null;
+      }
+  }
+
+
+
     // Password reset endpoint
     app.post('/email/passwordreset', emailLimiter, async (req, res) => {
       const { Email } = req.body;
+
+      const db = client.db('Test');
 
       try {
         if (!Email) {
@@ -261,22 +304,38 @@ exports.setApp = function ( app, client )
       }
     });
 
+
+
     // Email verification handler
     app.get('/email/verify/:userId/:token', async (req, res) => {
       const { userId, token } = req.params;
 
+      console.log(userId);
+      console.log(token);
+
+      const db = client.db('Test');
+
       try {
+
+        // First check if user exists by ID
+        const userById = await db.collection('Users').findOne({ "_id": userId });
+        console.log('User by ID:', userById);
+
+        // Then check if user exists by token
+        const userByToken = await db.collection('Users').findOne({ "VerKey": token });
+        console.log('User by token:', userByToken);
+
         const user = await db.collection('Users').findOne({
-          "_id": new mongoose.Types.ObjectId(userId),
+          "UserID": Number(userId),
           "VerKey": token,
-          "VerKeyExpires": { $gt: new Date() }
+          // "VerKeyExpires": { $gt: new Date() }
         });
 
         if (!user) {
           return res.status(400).send(`
             <h1>Email Verification Failed</h1>
             <p>The verification link is invalid or has expired.</p>
-            <a href="${process.env.FRONTEND_URL}/resend-verification">Click here to request a new verification email</a>
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/resend-verification">Click here to request a new verification email</a>
           `);
         }
 
@@ -291,7 +350,7 @@ exports.setApp = function ( app, client )
         res.send(`
           <h1>Email Verified Successfully</h1>
           <p>Thank you for verifying your email address!</p>
-          <a href="${process.env.FRONTEND_URL}/">Click here to login</a>
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/">Click here to login</a>
         `);
       } catch (e) {
         console.error('Verification error:', e);
@@ -302,96 +361,72 @@ exports.setApp = function ( app, client )
       }
     });
 
-    // Upload new card (outdated)
-    // const multer = require('multer');
-    // const { GridFsStorage } = require('multer-gridfs-storage');
-    // const { MongoClient } = require('mongodb');
-    // const GridFSBucket = require('mongodb').GridFSBucket;
 
-    // Configure GridFS storage
-    // const storage = new GridFsStorage({
-    // url: 'your_mongodb_connection_string',
+    // Find user by email endpoint
+    app.post('/api/findUserByEmail', async (req, res) => {
+      const { email } = req.body;
 
-    // file: (req, file) => {
+      const db = client.db('Test');
+      
+      try {
+        if (!email) {
+          return res.status(400).json({ success: false, error: 'Email is required' });
+        }
+        
+        const user = await db.collection('Users').findOne({ Email: email });
+        
+        if (!user) {
+          return res.status(404).json({ success: false, error: 'User not found' });
+        }
+        
+        res.json({ success: true, userId: user.UserID });
+      } catch (e) {
+        console.error('Find user by email error:', e);
+        res.status(500).json({ success: false, error: 'Failed to find user' });
+      }
+    });
 
-    //     return {
-    //     bucketName: 'images', // Collection name for images
 
-    //     filename: `${Date.now()}-${file.originalname}` // Unique filename
 
-    //     };
-    // }
-    // });
+    // Password reset completion endpoint
+    app.post('/email/resetpassword', async (req, res) => {
+      const { Email, ResetToken, NewPassword } = req.body;
 
-    // const upload = multer({ storage });
+      const db = client.db('Test');
+      
+      try {
+        if (!Email || !ResetToken || !NewPassword) {
+          return res.status(400).json({ success: false, error: 'All fields are required' });
+        }
+        
+        const user = await db.collection('Users').findOne({
+          Email,
+          ResetToken,
+          ResetTokenExpires: { $gt: new Date() }
+        });
+        
+        if (!user) {
+          return res.status(400).json({ success: false, error: 'Invalid or expired reset token' });
+        }
+        
+        // Hash the new password
+        // const hashedPassword = await bcrypt.hash(NewPassword, 10);
+        
+        await db.collection('Users').updateOne(
+          { _id: user._id },
+          { 
+            $set: { Password: NewPassword },
+            $unset: { ResetToken: "", ResetTokenExpires: "" }
+          }
+        );
+        
+        res.json({ success: true });
+      } catch (e) {
+        console.error('Password reset error:', e);
+        res.status(500).json({ success: false, error: 'Failed to reset password' });
+      }
+    });
 
-    // // Upload new card
-    // app.post('/api/cards', upload.single('image'), async (req, res) => {
-    //     // incoming: userId, tags, date, location, plus file in 'image' field
-    //     // outgoing: cardId, error
-
-    //     const { userId, tags, date, location } = req.body;
-    //     const imageFile = req.file; // This contains the GridFS file info
-
-    //     // Validate required input
-    //     if (!userId || !tags || !date || !location) {
-    //         // If a file was uploaded but other fields are invalid, clean it up
-    //         if (imageFile) {
-    //         const bucket = new GridFSBucket(db, { bucketName: 'images' });
-    //         await bucket.delete(imageFile.id);
-    //         }
-    //         return res.status(400).json({ cardId: -1, error: 'userId is required' });
-    //     }
-
-    //     try {
-    //         // Check if user exists
-    //         const userExists = await db.collection('Users').findOne({ UserID: parseInt(userId) });
-
-    //         if (!userExists) {
-    //         // Clean up uploaded file if user doesn't exist
-    //         if (imageFile) {
-    //             const bucket = new GridFSBucket(db, { bucketName: 'images' });
-    //             await bucket.delete(imageFile.id);
-    //         }
-    //         return res.status(404).json({ cardId: -1, error: 'User not found' });
-    //         }
-
-    //         const cardId = Math.floor(Math.random() * 10000000);
-
-    //         const newCard = {
-    //         CardID: cardId,
-    //         UserID: parseInt(userId),
-    //         Tags: tags ? tags.split(',').map(tag => tag.trim()) : [], // Assuming tags come as comma-separated string
-    //         // ^ this line was giving errors
-    //         Location: location,
-    //         Date: date,
-    //         ImageId: imageFile ? imageFile.id : null, // Store GridFS file ID
-    //         CreatedAt: new Date(),
-    //         UpdatedAt: new Date(),
-    //         Likes: 0,
-    //         Comments: []
-    //         };
-
-    //         await db.collection('Cards').insertOne(newCard);
-    //         console.log('Card saved with ID:', cardId);
-
-    //         res.status(200).json({ 
-    //         cardId, 
-    //         error: '',
-    //         imageId: imageFile ? imageFile.id : null
-    //         });
-    //     } catch (e) {
-    //         console.error('Card creation error:', e);
-    //         // Clean up any uploaded file if error occurs
-    //         if (req.file) {
-    //         const bucket = new GridFSBucket(db, { bucketName: 'images' });
-    //         await bucket.delete(req.file.id).catch(cleanupError => {
-    //             console.error('Failed to cleanup image:', cleanupError);
-    //         });
-    //         }
-    //         res.status(500).json({ cardId: -1, error: e.toString() });
-    //     }
-    // });
 
 
     // Verify an image was uploaded
@@ -405,6 +440,8 @@ exports.setApp = function ( app, client )
             }
         }
     });
+
+    
     
     // Upload Card
     app.post('/api/cards', upload.single('image'), async (req, res) => {
@@ -466,29 +503,6 @@ exports.setApp = function ( app, client )
       
     });
 
-    // Get Card (image actually, plus outdated)
-    // app.get('/api/images/:id', async (req, res) => {
-    //     try {
-    //       const bucket = new GridFSBucket(db, { bucketName: 'images' });
-    //       const downloadStream = bucket.openDownloadStream(new ObjectId(req.params.id));
-          
-    //       downloadStream.on('error', () => {
-    //         return res.status(404).send('Image not found');
-    //       });
-      
-    //       // Set appropriate content type
-    //       downloadStream.on('file', (file) => {
-    //         res.set('Content-Type', file.contentType);
-    //       });
-      
-    //       downloadStream.pipe(res);
-    //     } catch (e) {
-    //       console.error('Image retrieval error:', e);
-    //       res.status(500).send('Error retrieving image');
-    //     }
-    // });
-
-
     // Get Image
     app.get('/api/images/:id', async (req, res) => {
         const db = client.db('Test');
@@ -506,54 +520,12 @@ exports.setApp = function ( app, client )
         }
     });
 
-    // Search card (outdated)
-    // app.get('/api/cards/search', async (req, res) => {
-    //     try {
-    //         const { location, tags } = req.query;
-      
-    //         if (!location && !tags) {
-    //             return res.status(400).json({ error: 'At least one search parameter (location or tags) is required' });
-    //         }
-        
-    //         const query = {};
-        
-    //         if (location) {
-    //             query.Location = { $regex: location, $options: 'i' };
-    //         }
-        
-    //         if (tags) {
-    //             const tagArray = tags.split(',').map(tag => tag.trim());
-    //             query.Tags = { $in: tagArray };
-    //         }
-        
-    //         const cards = await db.collection('Cards')
-    //             .find(query)
-    //             .toArray();
-        
-    //         if (cards.length === 0) {
-    //             let message = 'No cards found';
-    //             if (location && tags) {
-    //             message = 'No cards found matching both the location and tags';
-    //             } else if (location) {
-    //             message = 'No cards found matching the location';
-    //             } else {
-    //             message = 'No cards found with the specified tags';
-    //             }
-    //             return res.status(200).json({ message });
-    //         }
-        
-    //         res.status(200).json(cards);
-    //     } catch (e) {
-    //       console.error('Combined search error:', e);
-    //       res.status(500).json({ error: e.toString() });
-    //     }
-    // });
 
 
     // Search Card
     app.get('/api/cards/search', async (req, res) => {
         try {
-          const { location, tags, firstName, lastName } = req.query;
+          const { location, tags, firstName, lastName, userId } = req.query;
           const db = client.db('Test');
       
           // Validate at least one search parameter is provided
@@ -649,17 +621,6 @@ exports.setApp = function ( app, client )
     });
 
 
-    // Edit Card (this is the exact same thing thats in Upload Card's area)
-    // const upload = multer({
-    //     storage: multer.memoryStorage(),
-    //     fileFilter: (req, file, cb) => {
-    //         if (file.mimetype.startsWith('image/')) {
-    //             cb(null, true);
-    //         } else {
-    //             cb(new Error('Only image files are allowed!'), false);
-    //         }
-    //     }
-    //  });
     
     // Edit Card
     app.put('/api/cards/:cardId', upload.single('image'), async (req, res) => {
@@ -761,6 +722,7 @@ exports.setApp = function ( app, client )
             });
         }  
     });
+
 
 
     // Delete Card
