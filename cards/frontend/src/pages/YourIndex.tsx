@@ -403,10 +403,53 @@ export default function YourIndex() {
             gridColumn: "1 / -1", 
             textAlign: "center", 
             padding: "40px", 
-            backgroundColor: "rgba(255, 255, 255, 0.8)",
-            borderRadius: "10px"
+            backgroundColor: "rgba(30, 41, 59, 0.85)",
+            borderRadius: "15px",
+            boxShadow: "0 6px 16px rgba(0, 0, 0, 0.3)",
+            color: "#ffffff",
+            border: "2px solid #3b82f6",
+            maxWidth: "600px",
+            margin: "20px auto"
           }}>
-            <p>You haven't uploaded any findings yet. Use the "Upload Findings" button to get started!</p>
+            <h2 style={{ 
+              fontSize: "28px", 
+              marginBottom: "20px",
+              fontWeight: "bold",
+              color: "#ffffff"
+            }}>
+              No Findings Yet
+            </h2>
+            <p style={{ 
+              fontSize: "18px", 
+              marginBottom: "30px",
+              color: "#e2e8f0"
+            }}>
+              You haven't uploaded any findings yet. Use the "Upload Findings" button to get started!
+            </p>
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "center",
+              gap: "20px"
+            }}>
+              <button 
+                style={{
+                  padding: "12px 30px",
+                  backgroundColor: "#1a365d",
+                  color: "#ffffff",
+                  borderRadius: "30px",
+                  cursor: "pointer",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+                  transition: "transform 0.2s, box-shadow 0.2s",
+                  border: "2px solid #ffffff",
+                  display: "inline-block"
+                }}
+                onClick={() => document.getElementById('image-upload')?.click()}
+              >
+                Upload Findings
+              </button>
+            </div>
           </div>
         ) : (
           findings.map((finding) => (
