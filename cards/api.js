@@ -524,100 +524,100 @@ exports.setApp = function ( app, client )
 
     // Search Card
     app.get('/api/cards/search', async (req, res) => {
-        try {
-          const { location, tags, firstName, lastName, userId } = req.query;
-          const db = client.db('Test');
-      
-          // Validate at least one search parameter is provided
-          if (!location && !tags && !firstName && !lastName) {
-            return res.status(400).json({ 
-              error: 'Please provide at least one search parameter (location, tags, firstName, or lastName)' 
-            });
-          }
-      
-          // Step 1: If searching by user names, first find matching users
-          let userIds = [];
-          if (firstName || lastName) {
-            const userQuery = {};
-            if (firstName) userQuery.FirstName = { $regex: firstName, $options: 'i' };
-            if (lastName) userQuery.LastName = { $regex: lastName, $options: 'i' };
-      
-            const matchingUsers = await db.collection('Users')
-              .find(userQuery)
-              .project({ UserID: 1 })
-              .toArray();
-      
-            userIds = matchingUsers.map(user => user.UserID);
-      
-            // If no users found and we were specifically searching by name
-            if (userIds.length === 0 && (firstName || lastName)) {
-              return res.status(200).json({ 
-                message: 'No cards found matching the user name criteria',
-                cards: []
-              });
-            }
-          }
-      
-          // Step 2: Build the card query
-          const cardQuery = {};
-      
-          if (location) {
-            cardQuery.Location = { $regex: location, $options: 'i' };
-          }
-      
-          if (tags) {
-            const tagArray = tags.split(',').map(tag => tag.trim());
-            cardQuery.Tags = { $in: tagArray };
-          }
-      
-          // If we have userIds from name search, add to query
-          if (userIds.length > 0) {
-            cardQuery.UserID = { $in: userIds };
-          } else if (firstName || lastName) {
-            // If we searched by name but found no users, return empty
+      try {
+        const { location, tags, firstName, lastName, userId } = req.query;
+        const db = client.db('Test');
+    
+        // Step 1: Build the card query
+        const cardQuery = {};
+        
+        // If userId is provided, exclude cards from that user
+        if (userId) {
+          cardQuery.UserID = { $ne: Number(userId) };
+        }
+    
+        // Add other search filters if provided
+        if (location) {
+          cardQuery.Location = { $regex: location, $options: 'i' };
+        }
+    
+        if (tags) {
+          const tagArray = tags.split(',').map(tag => tag.trim());
+          cardQuery.Tags = { $in: tagArray };
+        }
+    
+        // Step 2: If searching by user names, handle that filter
+        if (firstName || lastName) {
+          const userQuery = {};
+          if (firstName) userQuery.FirstName = { $regex: firstName, $options: 'i' };
+          if (lastName) userQuery.LastName = { $regex: lastName, $options: 'i' };
+    
+          const matchingUsers = await db.collection('Users')
+            .find(userQuery)
+            .project({ UserID: 1 })
+            .toArray();
+    
+          const userIds = matchingUsers.map(user => user.UserID);
+    
+          // If no users found and we were specifically searching by name
+          if (userIds.length === 0) {
             return res.status(200).json({ 
               message: 'No cards found matching the user name criteria',
               cards: []
             });
           }
-      
-          // Step 3: Find matching cards and include user information
-          const cards = await db.collection('Cards')
-            .find(cardQuery)
-            .toArray();
-      
-          // If we want to include user information in the response
-          if (cards.length > 0) {
-            const cardUserIds = [...new Set(cards.map(card => card.UserID))];
-            const users = await db.collection('Users')
-              .find({ UserID: { $in: cardUserIds } })
-              .project({ UserID: 1, FirstName: 1, LastName: 1 })
-              .toArray();
-      
-            const userMap = users.reduce((map, user) => {
-              map[user.UserID] = user;
-              return map;
-            }, {});
-      
-            const cardsWithUserInfo = cards.map(card => ({
-              ...card,
-              user: {
-                firstName: userMap[card.UserID]?.FirstName || '',
-                lastName: userMap[card.UserID]?.LastName || ''
-              }
-            }));
-      
-            return res.status(200).json(cardsWithUserInfo);
+          
+          // Combine the username filter with the existing userId exclusion if needed
+          if (userId) {
+            // We need both conditions: UserID must be in userIds AND must not be the excluded userId
+            cardQuery.$and = [
+              { UserID: { $in: userIds } },
+              { UserID: { $ne: userId } }
+            ];
+            delete cardQuery.UserID; // Remove the original condition as it's now in $and
+          } else {
+            // Just filter by the matching userIds
+            cardQuery.UserID = { $in: userIds };
           }
-      
-          res.status(200).json({ 
-            message: 'No cards found matching your criteria',
-            cards: []
-          });
-        } catch (e) {
-          console.error('Search error:', e);
-          res.status(500).json({ error: 'Internal server error' });
-        }  
+        }
+    
+        // Step 3: Find matching cards and include user information
+        const cards = await db.collection('Cards')
+          .find(cardQuery)
+          .toArray();
+    
+        // If we found cards, include user information
+        if (cards.length > 0) {
+          const cardUserIds = [...new Set(cards.map(card => card.UserID))];
+          const users = await db.collection('Users')
+            .find({ UserID: { $in: cardUserIds } })
+            .project({ UserID: 1, FirstName: 1, LastName: 1 })
+            .toArray();
+    
+          const userMap = users.reduce((map, user) => {
+            map[user.UserID] = user;
+            return map;
+          }, {});
+    
+          const cardsWithUserInfo = cards.map(card => ({
+            ...card,
+            user: {
+              firstName: userMap[card.UserID]?.FirstName || '',
+              lastName: userMap[card.UserID]?.LastName || ''
+            }
+          }));
+    
+          return res.status(200).json(cardsWithUserInfo);
+        }
+    
+        res.status(200).json({ 
+          message: 'No cards found matching your criteria',
+          cards: []
+        });
+      } catch (e) {
+        console.error('Search error:', e);
+        res.status(500).json({ error: 'Internal server error' });
+      }  
     });
 
 
