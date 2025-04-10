@@ -310,20 +310,9 @@ exports.setApp = function ( app, client )
     app.get('/email/verify/:userId/:token', async (req, res) => {
       const { userId, token } = req.params;
 
-      console.log(userId);
-      console.log(token);
-
       const db = client.db('Test');
 
       try {
-
-        // First check if user exists by ID
-        const userById = await db.collection('Users').findOne({ "_id": userId });
-        console.log('User by ID:', userById);
-
-        // Then check if user exists by token
-        const userByToken = await db.collection('Users').findOne({ "VerKey": token });
-        console.log('User by token:', userByToken);
 
         const user = await db.collection('Users').findOne({
           "UserID": Number(userId),
