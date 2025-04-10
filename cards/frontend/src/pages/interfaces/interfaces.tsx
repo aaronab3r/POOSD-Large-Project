@@ -3,3 +3,11 @@ export interface JWTPayLoad {
     firstName: string;
     lastName: string;
 }
+
+export interface Finding {
+  id: number;
+  imageUrl: string;
+  location: string;
+  date: Date;
+  keywords: string[];
+}

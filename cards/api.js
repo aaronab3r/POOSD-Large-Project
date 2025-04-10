@@ -3,6 +3,13 @@ require('express');
 require('mongodb');
 token = require('./createJWT.js');
 const multer = require('multer');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+
+const nodemailer = require('nodemailer');
+const mongoose = require('mongoose');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 // Info for AWS S3
 const AWS = require('aws-sdk');
@@ -101,6 +108,198 @@ exports.setApp = function ( app, client )
           console.error('Registration error:', e);
           res.status(500).json({ id: -1, error: e.toString() });
         }
+    });
+
+    // Security middleware
+    app.use(helmet());
+    app.use(cors({
+      origin: process.env.ALLOWED_ORIGINS?.split(',') || '*'
+    }));
+    app.use(bodyParser.json());
+
+    // Rate limiting for email endpoints
+    const emailLimiter = rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 5, // limit each IP to 5 requests per windowMs
+      message: 'Too many requests from this IP, please try again later'
+    });
+
+    // Database connection with your MongoDB URI
+    const url = process.env.MONGODB_URI;
+    // const client = new mongoose.MongoClient(url, {
+    //   useNewUrlParser: true,
+    //   useUnifiedTopology: true,
+    //   connectTimeoutMS: 5000,
+    //   serverSelectionTimeoutMS: 5000
+    // });
+
+    let db;
+    // client.connect()
+    //   .then(() => {
+    //     console.log("MongoDB connected successfully");
+    //     db = client.db("Test"); // Using your test database
+    //   })
+    //   .catch(err => {
+    //     console.error("MongoDB connection error:", err);
+    //     process.exit(1);
+    //   });
+
+    // Email configuration
+    const transporter = nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      }
+    });
+
+    // Token generation with expiration
+    function makeToken(length, expiresInMinutes = 30) {
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      const token = Array.from({length}, () => 
+        characters.charAt(Math.floor(Math.random() * characters.length))
+        .join(''));
+
+      return {
+        token,
+        expiresAt: new Date(Date.now() + expiresInMinutes * 60000)
+      };
+    }
+
+    // Enhanced email sender
+    async function sendEmail(user, subject, message) {
+      const mailOptions = {
+        from: `”FishNet” <${process.env.EMAIL_USER}>`,
+        to: user.Email,
+        subject: subject,
+        text: `Hi ${user.FirstName} ${user.LastName},\n${message}\n\nThank you,\nFishNet`,
+        html: `<p>Hi ${user.FirstName} ${user.LastName},</p>
+              <p>${message.replace(/\n/g, '<br>')}</p>
+              <p>Thank you,<br>FishNet</p>`
+      };
+
+      return transporter.sendMail(mailOptions);
+    }
+
+    // Email verification endpoint
+    app.post('/email/sendverification', emailLimiter, async (req, res) => {
+      const { userId } = req.body;
+
+      try {
+        if (!userId) {
+          return res.status(400).json({ success: false, error: 'User ID is required' });
+        }
+
+        const user = await User.getUserInfo(userId);
+        if (!user) {
+          return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        if (user.Verified) {
+          return res.status(400).json({ success: false, error: 'Email already verified' });
+        }
+
+        const { token, expiresAt } = makeToken(20);
+
+        await db.collection('Users').updateOne(
+          { "_id": new mongoose.Types.ObjectId(userId) },
+          { $set: { 
+            "VerKey": token,
+            "VerKeyExpires": expiresAt 
+          }}
+        );
+
+        const verificationUrl = `${process.env.BASE_URL || 'https://yourbackend.com'}/email/verify/${user._id}/${token}`;
+        const message = `Please click the following link to verify your email address:\n${verificationUrl}\n\nThis link will expire in 30 minutes.`;
+
+        await sendEmail(user, "Email Verification", message);
+
+        res.json({ success: true });
+      } catch (e) {
+        console.error('Verification email error:', e);
+        res.status(500).json({ success: false, error: 'Failed to send verification email' });
+      }
+    });
+
+    // Password reset endpoint
+    app.post('/email/passwordreset', emailLimiter, async (req, res) => {
+      const { Email } = req.body;
+
+      try {
+        if (!Email) {
+          return res.status(400).json({ success: false, error: 'Email is required' });
+        }
+
+        const user = await db.collection('Users').findOne({ Email });
+
+        if (!user) {
+          return res.status(404).json({ success: false, error: 'Email not found' });
+        }
+
+        if (!user.Verified) {
+          return res.status(403).json({ success: false, error: 'Email not verified' });
+        }
+
+        const { token, expiresAt } = makeToken(6, 15); // 15 minute expiration
+
+        await db.collection('Users').updateOne(
+          { "_id": user._id },
+          { $set: { 
+            "ResetToken": token,
+            "ResetTokenExpires": expiresAt 
+          }}
+        );
+
+        const message = `Your password reset code is:\n\n${token}\n\nThis code will expire in 15 minutes.\n\nIf you didn't request this, please ignore this email.`;
+
+        await sendEmail(user, "Password Reset Request", message);
+
+        res.json({ success: true });
+      } catch (e) {
+        console.error('Password reset error:', e);
+        res.status(500).json({ success: false, error: 'Failed to process password reset' });
+      }
+    });
+
+    // Email verification handler
+    app.get('/email/verify/:userId/:token', async (req, res) => {
+      const { userId, token } = req.params;
+
+      try {
+        const user = await db.collection('Users').findOne({
+          "_id": new mongoose.Types.ObjectId(userId),
+          "VerKey": token,
+          "VerKeyExpires": { $gt: new Date() }
+        });
+
+        if (!user) {
+          return res.status(400).send(`
+            <h1>Email Verification Failed</h1>
+            <p>The verification link is invalid or has expired.</p>
+            <a href="${process.env.FRONTEND_URL}/resend-verification">Click here to request a new verification email</a>
+          `);
+        }
+
+        await db.collection('Users').updateOne(
+          { "_id": user._id },
+          { 
+            $set: { "Verified": true },
+            $unset: { "VerKey": "", "VerKeyExpires": "" }
+          }
+        );
+
+        res.send(`
+          <h1>Email Verified Successfully</h1>
+          <p>Thank you for verifying your email address!</p>
+          <a href="${process.env.FRONTEND_URL}/">Click here to login</a>
+        `);
+      } catch (e) {
+        console.error('Verification error:', e);
+        res.status(500).send(`
+          <h1>Verification Error</h1>
+          <p>An error occurred during verification. Please try again.</p>
+        `);
+      }
     });
 
     // Upload new card (outdated)

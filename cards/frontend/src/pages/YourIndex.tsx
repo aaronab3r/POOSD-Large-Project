@@ -5,17 +5,9 @@ import "react-datepicker/dist/react-datepicker.css";
 import "./styles/YourIndex.css";
 import { retrieveToken, storeToken } from "../tokenStorage";
 import { jwtDecode } from "jwt-decode";
-import { JWTPayLoad } from "./interfaces/interfaces";
+import { JWTPayLoad, Finding } from "./interfaces/interfaces";
 import { buildPath } from "../components/Path";
 import { useNavigate } from "react-router-dom";
-
-interface Finding {
-  id: number;
-  imageUrl: string;
-  location: string;
-  date: Date;
-  keywords: string[];
-}
 
 interface Styles {
   container: React.CSSProperties;
