@@ -73,7 +73,7 @@ const styleNavbar = {
   },
 };
 
-export default function YourIndex() {
+export default function YourGallery() {
   // Load the JWT to get the UserID
   // If we cannot load a JWT then the user is not logged in, and shouldn't be able to view this site
   const [userId, setUserId] = useState<number>(-1);
@@ -161,7 +161,7 @@ export default function YourIndex() {
 
   useEffect(() => {
     if (showPopup && mapContainerRef.current && !mapRef.current) {
-      mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';  
+      mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
       mapRef.current = new mapboxgl.Map({
         container: mapContainerRef.current,
         style: 'mapbox://styles/as152079/cm97o7sgy004c01qp3h800htc',
@@ -189,7 +189,6 @@ export default function YourIndex() {
               </form>
             `)
             .addTo(mapRef.current!);
-            console.log('Line 162 ', e.lngLat.lng, ' ', e.lngLat.lat);
           
           // Handle form submission
           document.getElementById('new-point-form')?.addEventListener('submit', (event) => {
@@ -197,8 +196,6 @@ export default function YourIndex() {
 
             const coordinates = [e.lngLat.lng, e.lngLat.lat];
             selectedCoordinates.current = coordinates as [number, number];
-            console.log('Line 170 ', coordinates[0], ' ', coordinates[1]);
-            console.log('Line 171 ', selectedCoordinates.current[0], ' ', selectedCoordinates.current[1]);
             
             // Close the popup and exit adding mode
             popup.remove();
@@ -220,7 +217,7 @@ export default function YourIndex() {
     try {
       // You'll need your dataset ID and access token
       const datasetId = 'cm90axaec075j1np8mlh63syt';
-      const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
+      const accessToken = import.meta.env.VITE_MAPBOX_SECRET_TOKEN;
       const username = 'as152079'; // Your Mapbox username
       
       // Generate a unique ID for the feature
@@ -254,7 +251,7 @@ export default function YourIndex() {
   // Function to export dataset to a tileset
   const exportDatasetToTileset = async (datasetId: string) => {
     try {
-      const accessToken = import.meta.env.VITE_MAPBOX_SECRET_TILE_TOKEN || '';
+      const accessToken = import.meta.env.VITE_MAPBOX_SECRET_TILE_TOKEN;
       const username = 'as152079'; // Your Mapbox username
       const tilesetId = 'as152079.cm90axaec075j1np8mlh63syt-2dcjb';
       
@@ -332,14 +329,12 @@ export default function YourIndex() {
             coordinates: selectedCoordinates.current,
           },
           properties: {
-            firstName: "firstName",
-            date: "date", // date || new Date(),
-            keywords: "keywords", // keywords.split(',').map(keyword => keyword.trim()),
-            imageUrl: "" //result.imageUrl,
+            firstName: firstName,
+            date: date || new Date(),
+            keywords: keywords.split(',').map(keyword => keyword.trim()),
+            imageUrl: result.imageUrl,
           }
         };
-
-        console.log('Line 312 ', selectedCoordinates.current[0], ' ', selectedCoordinates.current[1]);
         
         // Add to our local state
         setNewFeatures(prev => [...prev, newFeature]);

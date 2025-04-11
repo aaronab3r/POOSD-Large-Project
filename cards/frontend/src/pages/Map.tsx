@@ -21,7 +21,7 @@ function Map() {
       container: mapContainerRef.current!,
       style: 'mapbox://styles/as152079/cm97o7sgy004c01qp3h800htc',
       center: [-84, 28], // starting position [lng, lat]
-      zoom: 6 // starting zoom
+      zoom: 4 // starting zoom
     });
 
     // Wait for the map to load before adding interactions
@@ -68,8 +68,6 @@ function Map() {
               </div>
             `)
             .addTo(mapRef.current!);
-
-
         }
       });
       
