@@ -222,7 +222,7 @@ export default function WelcomePage() {
           const user = {firstName, lastName, id: userId};
           localStorage.setItem('user_data', JSON.stringify(user));
           setMessage('Login Successful!');
-          navigate('/your-index');
+          navigate('/map');
         }
       } catch(e: any) {
         console.error('Token decoding error:', e);

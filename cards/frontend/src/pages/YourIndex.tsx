@@ -47,6 +47,30 @@ interface Styles {
   helperText: React.CSSProperties;
 }
 
+const styleNavbar = {
+  header: {
+      width: '100%',
+      height: '70px', 
+      backgroundColor: '#0097b2',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      position: 'fixed' as 'fixed',
+      top: 0,
+      left: 0,
+      zIndex: 10,
+  },
+  buttons1: {
+    width: "200px",
+    height: "65px",
+    left: "50px",
+    background: 'none',
+    fontSize: "25px",
+    textAlign: 'center' as 'center',
+    border: 'black',
+  },
+};
+
 export default function YourIndex() {
   // Load the JWT to get the UserID
   // If we cannot load a JWT then the user is not logged in, and shouldn't be able to view this site
@@ -68,6 +92,11 @@ export default function YourIndex() {
       navigate('/');
     }
   }, []);
+
+  const logOut = () => 
+  {
+      navigate("/");
+  };
 
   // New state for the popup
   const [showPopup, setShowPopup] = useState(false);
@@ -466,8 +495,15 @@ export default function YourIndex() {
 
   return (
     <div style={styles.container}>
+      <div style={styleNavbar.header}>
+        <button style={styleNavbar.buttons1} onClick={() => navigate("/map")}>Map</button>
+        <button style={styleNavbar.buttons1} onClick={() => navigate("/following-page")}>Discover</button>
+        <button style={styleNavbar.buttons1} onClick={logOut}>
+          Log Out
+        </button>
+      </div>
       <div style={styles.header}>
-        <h1 style={styles.heading}>Your Findings</h1>
+        <h1 style={styles.heading}>Your Gallery</h1>
         
         <div style={styles.uploadSection}>
           <input
@@ -728,6 +764,7 @@ const styles: Styles = {
     fontSize: "45px",
     color: "#fff",
     textAlign: "center" as "center",
+    marginTop: "50px",
     marginBottom: "20px",
     textShadow: "2px 2px 4px rgba(0, 0, 0, 0.7)",
     fontWeight: "bold",
