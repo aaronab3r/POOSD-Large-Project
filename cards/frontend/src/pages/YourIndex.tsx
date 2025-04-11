@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import backgroundImage from "./images/background.jpg";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -8,8 +8,13 @@ import { jwtDecode } from "jwt-decode";
 import { JWTPayLoad, Finding } from "./interfaces/interfaces";
 import { buildPath } from "../components/Path";
 import { useNavigate } from "react-router-dom";
+import "./styles/Map.css";
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface Styles {
+  popupButton: React.CSSProperties;
+  closeButton: React.CSSProperties;
   container: React.CSSProperties;
   header: React.CSSProperties;
   heading: React.CSSProperties;
@@ -64,6 +69,16 @@ export default function YourIndex() {
     }
   }, []);
 
+  // New state for the popup
+  const [showPopup, setShowPopup] = useState(false);
+  const [addingPoint, setAddingPoint] = useState(false);
+  const [newFeatures, setNewFeatures] = useState<any[]>([]);
+  const handlePopupOpen = () => {setShowPopup(true); setAddingPoint(true);};
+  const handlePopupClose = () => {setShowPopup(false); setAddingPoint(false);};
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const selectedCoordinates = useRef<[number, number] | null>(null);
+
   const [findings, setFindings] = useState<Finding[]>([]);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -113,6 +128,131 @@ export default function YourIndex() {
     }
   }, [userId]);
 
+  useEffect(() => {
+    if (showPopup && mapContainerRef.current && !mapRef.current) {
+      mapboxgl.accessToken = 'pk.eyJ1IjoiYXMxNTIwNzkiLCJhIjoiY204aHZnYnp0MDZjNDJ5b25lZnh6YWZhYiJ9.CxDeNe6OknbrK3o87IsUjQ'
+  
+      mapRef.current = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: 'mapbox://styles/as152079/cm97o7sgy004c01qp3h800htc',
+        center: [-84, 28],
+        zoom: 4
+      });
+
+      // Wait for the map to load before adding interactions
+      mapRef.current.on('load', () => {
+        // Assuming your style has a layer with points
+        const pointsLayerId = 'fishnettiles';
+        
+        // Add click event to the map for adding new points
+        // Line Changed, this was before: mapRef.current!.on('click', (e) => {
+        mapRef.current!.on('click', (e: mapboxgl.MapMouseEvent) => {
+          if (!addingPoint) return;
+          
+          // Create a form popup for the user to enter point details
+          const popup = new mapboxgl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML(`
+              <h3 style="color: #222222;">Add New Point</h3>
+              <form id="new-point-form">
+                <button type="submit", style="color: #ffffff; background-color: #2563eb";>Set Point</button>
+              </form>
+            `)
+            .addTo(mapRef.current!);
+            console.log('Line 162 ', e.lngLat.lng, ' ', e.lngLat.lat);
+          
+          // Handle form submission
+          document.getElementById('new-point-form')?.addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            const coordinates = [e.lngLat.lng, e.lngLat.lat];
+            selectedCoordinates.current = coordinates as [number, number];
+            console.log('Line 170 ', coordinates[0], ' ', coordinates[1]);
+            console.log('Line 171 ', selectedCoordinates.current[0], ' ', selectedCoordinates.current[1]);
+            
+            // Close the popup and exit adding mode
+            popup.remove();
+            setAddingPoint(false);
+            setShowPopup(false);
+          });
+        });
+      });
+  
+      return () => {
+        mapRef.current?.remove();
+        mapRef.current = null;
+      };
+    }
+  }, [showPopup, addingPoint, newFeatures]);
+
+  // Function to update Mapbox dataset
+  const updateMapboxDataset = async (feature: any) => {
+    try {
+      // You'll need your dataset ID and access token
+      const datasetId = 'cm90axaec075j1np8mlh63syt';
+      const accessToken = 'sk.eyJ1IjoiYXMxNTIwNzkiLCJhIjoiY205N2tjZGEyMDhtMTJqb2NlHQ5ZGtlaiJ9.g9nMWcStqCGn-sonawTn7A';
+      const username = 'as152079'; // Your Mapbox username
+      
+      // Generate a unique ID for the feature
+      const featureId = `point-${Date.now()}`;
+      
+      // API endpoint for adding a feature to a dataset
+      const url = `https://api.mapbox.com/datasets/v1/${username}/${datasetId}/features/${featureId}?access_token=${accessToken}`;
+      
+      // Send the feature to Mapbox
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(feature)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update dataset: ${response.statusText}`);
+      }
+      
+      console.log('Feature added successfully');
+      
+      // Optionally, trigger the export to a tileset
+      exportDatasetToTileset(datasetId);
+    } catch (error) {
+      console.error('Error updating dataset:', error);
+    }
+  };
+
+  // Function to export dataset to a tileset
+  const exportDatasetToTileset = async (datasetId: string) => {
+    try {
+      const accessToken = 'sk.eyJ1IjoiYXMxNTIwNzkiLCJhIjoiY205N24xdmgyMDlmYzJrcTJndnYyZmFoZyJ9.CWlWt3xTJrG7NtD3c4feaA';
+      const username = 'as152079'; // Your Mapbox username
+      const tilesetId = 'as152079.cm90axaec075j1np8mlh63syt-2dcjb';
+      
+      // API endpoint for publishing a dataset to a tileset
+      const url = `https://api.mapbox.com/uploads/v1/${username}?access_token=${accessToken}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          tileset: `${tilesetId}`,
+          url: `mapbox://datasets/${username}/${datasetId}`,
+          name: 'FishNetTiles'
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to export dataset: ${response.statusText}`);
+      }
+      
+      console.log('Dataset exported to tileset successfully');
+    } catch (error) {
+      console.error('Error exporting dataset:', error);
+    }
+  };
+
   async function addCard(e: React.FormEvent<HTMLElement>): Promise<void> {
     e.preventDefault();
 
@@ -153,6 +293,29 @@ export default function YourIndex() {
         setFindings(prevFindings => 
           [...prevFindings, newFinding].sort((a, b) => b.date.getTime() - a.date.getTime())
         );
+
+        // Create a new feature
+        const newFeature = {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: selectedCoordinates.current,
+          },
+          properties: {
+            firstName: "firstName",
+            date: "date", // date || new Date(),
+            keywords: "keywords", // keywords.split(',').map(keyword => keyword.trim()),
+            imageUrl: "" //result.imageUrl,
+          }
+        };
+
+        console.log('Line 312 ', selectedCoordinates.current[0], ' ', selectedCoordinates.current[1]);
+        
+        // Add to our local state
+        setNewFeatures(prev => [...prev, newFeature]);
+        
+        // Update the Mapbox dataset
+        updateMapboxDataset(newFeature);
         
         // Reset the form
         setShowUploadForm(false);
@@ -376,6 +539,29 @@ export default function YourIndex() {
               />
               <p style={styles.helperText}>Separate keywords with commas</p>
             </div>
+            <button onClick={handlePopupOpen} style={styles.popupButton}>
+              Set Point On Map
+            </button>
+              {showPopup && (
+                <div style={styles.modalOverlay}>
+                    <button onClick={handlePopupClose} style={styles.closeButton}>
+                      x
+                    </button>
+                    <div ref={mapContainerRef} 
+                      style={{
+                        position: 'absolute', 
+                        bottom: '50%', 
+                        right: '50%', 
+                        width: '60%', 
+                        height: '60%', 
+                        border: '2px solid #3887be',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        transform: 'translate(50%, 50%)'
+                      }}
+                    />
+                </div>
+              )}
             <button 
               onClick={handleSubmit} 
               style={{
@@ -745,5 +931,28 @@ const styles: Styles = {
     fontSize: "14px",
     color: "#cbd5e1",
     fontStyle: "italic",
+  },
+  popupButton: {
+    marginTop: "20px",
+    padding: "12px 20px",
+    backgroundColor: "#3b82f6",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: "bold",
+    transition: "background-color 0.3s",
+  },
+  closeButton: {
+    position: "absolute",
+    top: "19%",
+    right: "19%",
+    background: "none",
+    border: "none",
+    color: "#ef4444",
+    fontSize: "24px",
+    cursor: "pointer",
+    zIndex: 1,
   },
 };

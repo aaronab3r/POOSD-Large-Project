@@ -7,15 +7,13 @@
   }
   
   #map-container {
-    height: 100%;
+    height: calc(100% - 70px); /* Subtract navbar height */
     width: 100%;
-    /* temporarily set the background color so we can tell where the map container is positioned */
-    background-color: lightgrey;
-    margin: 0;
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 70px; /* Same as your navbar height */
+    left: 0;
+    margin: 0;
+    /* Remove the transform that was centering it */
   }
   
   .add-button {
