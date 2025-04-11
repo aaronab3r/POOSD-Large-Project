@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import backgroundImage from "./images/background.jpg";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import "./styles/YourIndex.css";
+import "./styles/YourGallery.css";
 import { retrieveToken, storeToken } from "../tokenStorage";
 import { jwtDecode } from "jwt-decode";
 import { JWTPayLoad, Finding } from "./interfaces/interfaces";
@@ -68,6 +68,8 @@ const styleNavbar = {
     fontSize: "25px",
     textAlign: 'center' as 'center',
     border: 'black',
+    cursor: 'pointer',
+    color: '#ffffff'
   },
 };
 

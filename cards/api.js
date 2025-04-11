@@ -530,9 +530,21 @@ exports.setApp = function ( app, client )
           cardQuery.Location = { $regex: location, $options: 'i' };
         }
     
+        // Modified tag search to handle partial matches
         if (tags) {
           const tagArray = tags.split(',').map(tag => tag.trim());
-          cardQuery.Tags = { $in: tagArray };
+          
+          // For each tag in the search query, find cards where any tag contains that string
+          // Using $elemMatch with $regex to search within array elements
+          if (tagArray.length === 1) {
+            // If there's only one tag, use a simpler query
+            cardQuery.Tags = { $regex: tagArray[0], $options: 'i' };
+          } else {
+            // For multiple tags, use $or to match any of them
+            cardQuery.$or = tagArray.map(tag => ({
+              Tags: { $regex: tag, $options: 'i' }
+            }));
+          }
         }
     
         // Step 2: If searching by user names, handle that filter
@@ -561,7 +573,7 @@ exports.setApp = function ( app, client )
             // We need both conditions: UserID must be in userIds AND must not be the excluded userId
             cardQuery.$and = [
               { UserID: { $in: userIds } },
-              { UserID: { $ne: userId } }
+              { UserID: { $ne: Number(userId) } }
             ];
             delete cardQuery.UserID; // Remove the original condition as it's now in $and
           } else {
