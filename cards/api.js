@@ -258,7 +258,7 @@ exports.setApp = function ( app, client )
           console.log("Error: '" + e + "' in getUserInfo()");
           return null;
       }
-  }
+    }
 
 
 
