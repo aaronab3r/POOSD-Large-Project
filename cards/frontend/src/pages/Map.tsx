@@ -19,7 +19,7 @@ function Map() {
   };
 
   useEffect(() => {
-    mapboxgl.accessToken = 'pk.eyJ1IjoiYXMxNTIwNzkiLCJhIjoiY204aHZnYnp0MDZjNDJ5b25lZnh6YWZhYiJ9.CxDeNe6OknbrK3o87IsUjQ'
+    mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN || '';
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current!,
       style: 'mapbox://styles/as152079/cm97o7sgy004c01qp3h800htc',
