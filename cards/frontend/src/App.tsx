@@ -2,8 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import './App.css';
 import CardPage from './pages/CardPage';
 import WelcomePage from './pages/WelcomePage';
-import YourIndex from './pages/YourIndex';
-import Following from './pages/Following';
+import YourGallery from './pages/YourGallery';
+import Discover from './pages/Discover';
 import Map from './pages/Map';
 import ResendVerification from './pages/ResendVerification';
 import ResetPassword from './pages/ResetPassword';
@@ -14,8 +14,8 @@ function App() {
       <Routes>
         <Route path="/" element={<WelcomePage />} />
         <Route path="/cards" element={<CardPage />} />
-        <Route path="/your-index" element={<YourIndex />} />
-        <Route path="/following-page" element={<Following />} />
+        <Route path="/your-gallery" element={<YourGallery />} />
+        <Route path="/discover" element={<Discover />} />
         <Route path="/map" element={<Map />} />
         <Route path="/resend-verification" element={<ResendVerification />} />
         <Route path="/reset-password" element={<ResetPassword />} />

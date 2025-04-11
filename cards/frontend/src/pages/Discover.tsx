@@ -90,7 +90,7 @@ export default function Following()
     return (
         <div style={styleFollow.background}>
             <div style={styleFollow.header}>
-                <button style={styleFollow.buttons1} onClick={() => navigate("/your-index")}>Gallery</button>
+                <button style={styleFollow.buttons1} onClick={() => navigate("/your-gallery")}>Gallery</button>
                 <button style={styleFollow.buttons1} onClick={() => navigate("/map")}>Map</button>
                 <button style={styleFollow.buttons1} onClick={logOut}>
                     Log Out

@@ -116,8 +116,8 @@ function Map() {
   return (
     <>
       <div style={styleNavbar.header}>
-          <button style={styleNavbar.buttons1} onClick={() => navigate("/your-index")}>Gallery</button>
-          <button style={styleNavbar.buttons1} onClick={() => navigate("/following-page")}>Discover</button>
+          <button style={styleNavbar.buttons1} onClick={() => navigate("/your-gallery")}>Gallery</button>
+          <button style={styleNavbar.buttons1} onClick={() => navigate("/discover")}>Discover</button>
           <button style={styleNavbar.buttons1} onClick={logOut}>
               Log Out
                 </button>

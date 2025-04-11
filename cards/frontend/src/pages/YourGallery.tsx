@@ -497,7 +497,7 @@ export default function YourIndex() {
     <div style={styles.container}>
       <div style={styleNavbar.header}>
         <button style={styleNavbar.buttons1} onClick={() => navigate("/map")}>Map</button>
-        <button style={styleNavbar.buttons1} onClick={() => navigate("/following-page")}>Discover</button>
+        <button style={styleNavbar.buttons1} onClick={() => navigate("/discover")}>Discover</button>
         <button style={styleNavbar.buttons1} onClick={logOut}>
           Log Out
         </button>
