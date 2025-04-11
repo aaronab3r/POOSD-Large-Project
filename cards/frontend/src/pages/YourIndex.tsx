@@ -130,7 +130,7 @@ export default function YourIndex() {
 
   useEffect(() => {
     if (showPopup && mapContainerRef.current && !mapRef.current) {
-      mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN || '';  
+      mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';  
       mapRef.current = new mapboxgl.Map({
         container: mapContainerRef.current,
         style: 'mapbox://styles/as152079/cm97o7sgy004c01qp3h800htc',
@@ -189,7 +189,7 @@ export default function YourIndex() {
     try {
       // You'll need your dataset ID and access token
       const datasetId = 'cm90axaec075j1np8mlh63syt';
-      const accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN || '';
+      const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
       const username = 'as152079'; // Your Mapbox username
       
       // Generate a unique ID for the feature
@@ -223,7 +223,7 @@ export default function YourIndex() {
   // Function to export dataset to a tileset
   const exportDatasetToTileset = async (datasetId: string) => {
     try {
-      const accessToken = process.env.REACT_APP_MAPBOX_SECRET_TILE_TOKEN || '';
+      const accessToken = import.meta.env.VITE_MAPBOX_SECRET_TILE_TOKEN || '';
       const username = 'as152079'; // Your Mapbox username
       const tilesetId = 'as152079.cm90axaec075j1np8mlh63syt-2dcjb';
       

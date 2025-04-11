@@ -1,10 +1,7 @@
 import { useNavigate } from "react-router";
-
 import { useRef, useEffect } from 'react'
 import mapboxgl from 'mapbox-gl'
-
 import 'mapbox-gl/dist/mapbox-gl.css';
-
 import "./styles/Map.css";
 
 function Map() {
@@ -19,7 +16,7 @@ function Map() {
   };
 
   useEffect(() => {
-    mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN || '';
+    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current!,
       style: 'mapbox://styles/as152079/cm97o7sgy004c01qp3h800htc',
