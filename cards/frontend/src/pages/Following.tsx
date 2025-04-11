@@ -1,48 +1,74 @@
 import { useNavigate } from "react-router";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import backgroundImage from  "./images/FollowingBG.png";
+import { retrieveToken, storeToken } from "../tokenStorage";
+import { jwtDecode } from "jwt-decode";
+import { JWTPayLoad, Finding } from "./interfaces/interfaces";
+import { buildPath } from "../components/Path";
 
-
-type image = 
-{
-    id: number;
-    imageUrl: string;
-    location: string;
-    date: string;
-    tags: string;
-}
 
 export default function Following()
 {
     const navigate = useNavigate();
+    const [userId, setUserId] = useState<number>(-1);
+    const [firstName, setFirstName] = useState<string>('');
+
+    const [findings, setFindings] = useState<Finding[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Get the ID of the user logged in
+    useEffect(() => {
+        try {
+          const jwtToken = retrieveToken() as any;
+          const decoded = jwtDecode(jwtToken) as JWTPayLoad;
+          storeToken(jwtToken);
+          setUserId(decoded.userId);
+          setFirstName(decoded.firstName);
+        } catch (e: any) {
+          alert("Please log in to view this page");
+          // Redirect to login page
+          navigate('/');
+        }
+      }, []);
+
+    // Load all pictures that don't belong to the user
+    useEffect(() => {
+    async function fetchUserFindings() {
+        if (userId === -1) return;
+        
+        setIsLoading(true);
+        try {
+        const response = await fetch(buildPath(`api/cards/search?firstName=${firstName}`), {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+            const formattedFindings: Finding[] = data.map(card => ({
+            id: card.CardID,
+            imageUrl: card.ImageUrl,
+            location: card.Location,
+            date: new Date(card.Date),
+            keywords: card.Tags
+            }));
+            
+            setFindings(formattedFindings.sort((a, b) => b.date.getTime() - a.date.getTime()));
+        }
+        } catch (error) {
+        console.error("Error fetching findings:", error);
+        } finally {
+        setIsLoading(false);
+        }
+    }
     
-    const images: image[] = [
-        {
-            id: 8392,
-            imageUrl: 'hadjhad',
-            tags: 'sunset',
-            date: '2025-04-01',
-            location: 'Hawaii',
-        },
-        {
-            id: 8392,
-            imageUrl: 'hadjhad',
-            tags: 'city',
-            date: '2025-03-15',
-            location: 'New York',
-        },
-        {
-            id: 8392,
-            imageUrl: 'hadjhad',
-            tags: 'city',
-            date: '2025-03-15',
-            location: 'New York',
-          },
-        // more images...
-      ];
+    if (userId !== -1) {
+        fetchUserFindings();
+    }
+    }, [userId]);
 
     const [query, setQuery] = useState('');
-    const [filteredImages, setFilteredImages] = useState<image[]>(images);
 
     const logOut = () => 
     {
@@ -55,13 +81,10 @@ export default function Following()
         const input = e.target.value.toLowerCase();
         setQuery(input);
 
-        const results = images.filter((img) => 
-            img.tags.toLowerCase().includes(input) || 
-            img.date.includes(input) || 
-            img.location.toLowerCase().includes(input)
-        );
+        // send the Query to the search api
 
-        setFilteredImages(results);
+        // set findings to what the api returns
+            // the second useEffect has an example
     };
 
     return (
@@ -82,14 +105,36 @@ export default function Following()
             </div>
             <div style={styleFollow.resultBox}> {/*change highlight */}
             <div style={styleFollow.findingsGrid}>
-                {filteredImages.map((img, index) => (
-                    <div key={index} style={styleFollow.findingCard}>
+                {findings.map((finding) => (
+                    <div key={finding.id}>
                     <img
-                        src={img.imageUrl}
-                        alt={`Image ${index}`}
-                        style={{ ...styleFollow.findingImage, objectFit: "cover" as const }}
+                      src={finding.imageUrl}
+                      alt={`Finding ${finding.id}`}
                     />
+                    <div>
+                      <p><strong>Location:</strong> {finding.location}</p>
+                      <p>
+                        <strong>Date:</strong> {finding.date.toLocaleDateString()}
+                      </p>
+                      <p>
+                        <strong>Keywords:</strong> {finding.keywords.join(', ')}
+                      </p>
+                      <div>
+                        <button 
+                          //onClick={() => handleEditClick(finding)}
+                          disabled={isLoading}
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          //onClick={() => handleDeleteClick(finding.id)}
+                          disabled={isLoading}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
+                  </div>
                 ))}
                 </div>
             </div>   
