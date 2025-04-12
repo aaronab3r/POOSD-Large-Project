@@ -1,4 +1,4 @@
-import './Services.css'
+import './styles/Services.css'
 interface ServiceProps {
     icon:string;
     text:string;
