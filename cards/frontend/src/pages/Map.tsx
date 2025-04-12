@@ -39,7 +39,7 @@ function Map() {
         // Type assertion to tell TypeScript this is a Point geometry
         // You can replace 'Point' with the actual geometry type you're using
         if (feature.geometry.type === 'Point') {
-          const coordinates = feature.geometry.coordinates.slice();
+          const coordinates = feature.geometry.coordinates.slice(0, 2) as [number, number];
           const firstName = feature.properties?.firstName; // example: RickL
           const keywords = feature.properties?.keywords; // example: something
           const imageUrl = feature.properties?.imageUrl // example: https://fish-net.s3.amazonaws.com/images/1744217317357_gibi.jpg
@@ -53,6 +53,7 @@ function Map() {
           }
           
           // Create and add the popup
+          // wrap in if statement to manage if coordinates does not have exactly 2 elements
           new mapboxgl.Popup()
             .setLngLat(coordinates)
             .setHTML(`
