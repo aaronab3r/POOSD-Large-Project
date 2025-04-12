@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router";
 import React, { useState, useEffect } from 'react';
-import backgroundImage from "./images/FollowingBG.png";
+import backgroundImage from "./images/FollowingBG.jpg";
 import { retrieveToken, storeToken } from "../tokenStorage";
 import { jwtDecode } from "jwt-decode";
 import { JWTPayLoad, Finding } from "./interfaces/interfaces";
