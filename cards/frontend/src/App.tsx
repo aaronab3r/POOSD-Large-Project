@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
-import CardPage from './pages/CardPage';
 import WelcomePage from './pages/WelcomePage';
 import YourGallery from './pages/YourGallery';
 import Discover from './pages/Discover';
@@ -13,7 +12,6 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<WelcomePage />} />
-        <Route path="/cards" element={<CardPage />} />
         <Route path="/your-gallery" element={<YourGallery />} />
         <Route path="/discover" element={<Discover />} />
         <Route path="/map" element={<Map />} />
