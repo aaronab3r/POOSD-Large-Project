@@ -1,4 +1,4 @@
-require('dotenv');
+require('dotenv').config();
 require('express');
 require('mongodb');
 token = require('./createJWT.js');
@@ -10,6 +10,12 @@ const nodemailer = require('nodemailer');
 const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+
+// For email verification
+const mailgun = require('mailgun-js')({
+  apiKey: process.env.MAILGUN_API_KEY,
+  domain: process.env.MAILGUN_DOMAIN
+});
 
 // Info for AWS S3
 const AWS = require('aws-sdk');
@@ -178,17 +184,27 @@ exports.setApp = function ( app, client )
 
     // Enhanced email sender
     async function sendEmail(user, subject, message) {
-      const mailOptions = {
-        from: `”FishNet” <${process.env.EMAIL_USER}>`,
-        to: user.Email,
-        subject: subject,
-        text: `Hi ${user.FirstName} ${user.LastName},\n${message}\n\nThank you,\nFishNet`,
-        html: `<p>Hi ${user.FirstName} ${user.LastName},</p>
-              <p>${message.replace(/\n/g, '<br>')}</p>
-              <p>Thank you,<br>FishNet</p>`
-      };
-
-      return transporter.sendMail(mailOptions);
+      try {
+        const mailData = {
+          from: `FishNet <noreply@${process.env.MAILGUN_DOMAIN}>`,
+          to: user.Email,
+          subject: subject,
+          text: `Hi ${user.FirstName} ${user.LastName},\n${message}\n\nThank you,\nFishNet`,
+          html: `<p>Hi ${user.FirstName} ${user.LastName},</p>
+                <p>${message.replace(/\n/g, '<br>')}</p>
+                <p>Thank you,<br>FishNet</p>`
+        };
+    
+        return new Promise((resolve, reject) => {
+          mailgun.messages().send(mailData, (error, body) => {
+            if (error) reject(error);
+            else resolve(body);
+          });
+        });
+      } catch (error) {
+        console.error('Error sending email:', error);
+        throw error;
+      }
     }
 
 
